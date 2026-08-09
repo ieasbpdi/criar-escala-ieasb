@@ -521,7 +521,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                             value={item.professor || ''}
                             onChange={(val) => handleUpdateItem(key, 'professor', val)}
                             options={sortedMemberList}
-                            placeholder="Selecione o professor..."
+                            placeholder="Selecione..."
                           />
                         </div>
                       ) : (
