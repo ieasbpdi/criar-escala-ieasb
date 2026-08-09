@@ -11,7 +11,7 @@ export function Footer() {
             <img 
               src={`${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - MONO.svg`} 
               alt="IEASB" 
-              className="h-10 w-auto object-contain" 
+              className="h-10 w-auto object-contain opacity-60 hover:opacity-100 transition-opacity" 
             />
             <p className="text-xs text-slate-500 leading-relaxed">
               Aplicação da <strong className="text-slate-800 font-semibold">Igreja Evangélica Assembleia dos Santos no Brasil</strong> — Palmeira dos Índios.

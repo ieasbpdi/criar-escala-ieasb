@@ -9,11 +9,11 @@ export function Header({ currentUser, onOpenMembersModal, onOpenUserManagementMo
         {/* Brand / Logo */}
         <div className="flex items-center gap-4">
           <img 
-            src={`${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - MONO.svg`} 
+            src={`${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - TEXTO - HORIZONTAL2.svg`} 
             alt="Logo IEASB" 
             className="h-12 sm:h-14 w-auto object-contain"
             onError={(e) => {
-              e.target.src = `${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - TEXTO - HORIZONTAL.svg`;
+              e.target.src = `${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - MONO.svg`;
             }}
           />
           <div>

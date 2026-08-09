@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, FileDown, CheckCircle2, AlertCircle, Clock, UserCheck, Music, DoorClosed, Droplets, BookOpen, ChevronLeft, Sparkles, RefreshCw } from 'lucide-react';
+import { Calendar as CalendarIcon, FileDown, CheckCircle2, AlertCircle, Clock, UserCheck, Music, DoorClosed, Droplets, BookOpen, ChevronLeft } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 
-import { DEFAULT_MEMBERS, sortMembers } from '../utils/members';
+import { sortMembers } from '../utils/members';
 import { getBrazilianHolidays } from '../utils/holidays';
 import { CustomSelect } from './CustomSelect';
 import { MembersModal } from './MembersModal';
@@ -28,9 +28,9 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
   const [step, setStep] = useState(1);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [cultosData, setCultosData] = useState({});
-  const [members, setMembers] = useState(DEFAULT_MEMBERS);
+  const [members, setMembers] = useState([]);
 
-  // Carregar membros do Supabase se existir
+  // Carregar membros do Supabase
   useEffect(() => {
     async function loadMembersFromSupabase() {
       try {
@@ -66,10 +66,6 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     }
   };
 
-  const handleResetMembers = () => {
-    setMembers(sortMembers(DEFAULT_MEMBERS));
-  };
-
   const handleMonthSelect = (month) => {
     setSelectedMonth(month);
     const start = startOfMonth(month);
@@ -79,14 +75,10 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     const holidays = getBrazilianHolidays(month.getFullYear());
     const initialData = {};
 
-    const sortedMemberList = sortMembers(members);
-    const defaultPerson = sortedMemberList[0] || '';
-
     days.forEach(day => {
-      const dayOfWeek = getDay(day); // 0: Dom, 2: Ter, 4: Qui, 6: Sáb
+      const dayOfWeek = getDay(day);
       const dateStr = format(day, 'yyyy-MM-dd');
       
-      // Checar se há feriado/data comemorativa nesta data
       const matchedHoliday = holidays.find(h => 
         h.date.getDate() === day.getDate() && h.date.getMonth() === day.getMonth()
       );
@@ -97,7 +89,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
           dateStr,
           title: 'ESCOLA BÍBLICA DOMINICAL',
           time: '09H30',
-          professor: 'AUXILIAR DIEGO',
+          professor: '',
           enabled: true,
           holiday: null
         };
@@ -106,10 +98,10 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
           dateStr,
           title: matchedHoliday ? matchedHoliday.name : 'Culto com a participação das famílias',
           time: '19H00',
-          dirigente: 'DIÁCONO REGIVALDO',
+          dirigente: '',
           louvor: 'TODOS OS DEPARTAMENTOS',
-          porta: 'DIÁCONO NOELCIO',
-          agua: 'DIÁCONO ERIVÂNIO',
+          porta: '',
+          agua: '',
           enabled: true,
           holiday: matchedHoliday ? matchedHoliday.name : null
         };
@@ -119,10 +111,10 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
           dateStr,
           title: matchedHoliday ? matchedHoliday.name : 'Culto de doutrina',
           time: '19H00',
-          dirigente: 'PASTOR VALTER',
-          louvor: 'MISSIONÁRIA MARIA',
-          porta: 'DIÁCONO JOSUÉ',
-          agua: 'DIÁCONO REGIVALDO',
+          dirigente: '',
+          louvor: '',
+          porta: '',
+          agua: '',
           enabled: true,
           holiday: matchedHoliday ? matchedHoliday.name : null
         };
@@ -132,10 +124,10 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
           dateStr,
           title: matchedHoliday ? matchedHoliday.name : 'Culto de portas abertas',
           time: '19H00',
-          dirigente: 'PASTOR VALTER',
+          dirigente: '',
           louvor: 'TODOS OS DEPARTAMENTOS',
-          porta: 'DIÁCONO JOSUÉ',
-          agua: 'DIÁCONO NOELCIO',
+          porta: '',
+          agua: '',
           enabled: true,
           holiday: matchedHoliday ? matchedHoliday.name : null
         };
@@ -145,10 +137,10 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
           dateStr,
           title: matchedHoliday ? matchedHoliday.name : 'CÍRCULO DA ORAÇÃO',
           time: '14H00',
-          dirigente: 'IRMÃ VANESSA E IRMÃ SIMONE',
-          louvor: 'MISSIONÁRIA MARIA E IRMÃ KHAUNNY',
-          porta: 'DIÁCONO JOSUÉ',
-          agua: 'IRMÃ EDILMA',
+          dirigente: '',
+          louvor: '',
+          porta: '',
+          agua: '',
           enabled: true,
           holiday: matchedHoliday ? matchedHoliday.name : null
         };
@@ -201,7 +193,6 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
         y = 20;
       }
 
-      // Title Banner Color: Dark Red for Santa Ceia, Teal for others
       const isSantaCeia = item.title.toUpperCase().includes('SANTA CEIA');
       const bannerBgColor = isSantaCeia ? [153, 0, 0] : [0, 150, 136];
       
@@ -252,14 +243,12 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
         members={members}
         onAddMember={handleAddMember}
         onRemoveMember={handleRemoveMember}
-        onResetDefault={handleResetMembers}
       />
 
-      {/* Stepper Progress Bar (Bolinhas e Linha Perfeitamente Alinhadas) */}
+      {/* Stepper Progress Bar Perfeitamente Alinhado */}
       <div className="mb-10 max-w-md mx-auto">
         <div className="relative flex items-center justify-between">
-          {/* Linha que liga apenas o centro da bolinha 1 até a 3 */}
-          <div className="absolute top-1/2 left-6 right-6 h-1 bg-slate-200 -translate-y-1/2 z-0" />
+          <div className="absolute top-[18px] left-[15%] right-[15%] h-0.5 bg-slate-200 z-0" />
           
           {[
             { num: 1, label: 'Mês' },
@@ -268,12 +257,12 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
           ].map((s) => {
             const isActive = step >= s.num;
             return (
-              <div key={s.num} className="relative z-10 flex flex-col items-center gap-1.5 bg-white px-2">
+              <div key={s.num} className="relative z-10 flex flex-col items-center gap-1.5 bg-slate-50 px-2">
                 <div 
                   className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
                     isActive 
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' 
-                      : 'bg-slate-100 text-slate-400 border border-slate-300'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20 ring-4 ring-slate-50' 
+                      : 'bg-white text-slate-400 border border-slate-300'
                   }`}
                 >
                   {s.num}
@@ -335,13 +324,13 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
             <div className="flex gap-3">
               <button 
                 onClick={() => setStep(1)}
-                className="px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors"
+                className="px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors cursor-pointer"
               >
                 Trocar Mês
               </button>
               <button 
                 onClick={() => setStep(3)}
-                className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md shadow-blue-600/20 transition-all flex items-center gap-2"
+                className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md shadow-blue-600/20 transition-all flex items-center gap-2 cursor-pointer"
               >
                 Avançar para Resumo <CheckCircle2 className="w-4 h-4" />
               </button>
@@ -354,7 +343,6 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
               const dayNum = format(dateObj, 'dd');
               const dayName = format(dateObj, 'EEEE', { locale: ptBR });
 
-              // Opções de tipos para o select
               let availableTypes = ALL_CULTO_TYPES;
               if (item.isEbd) availableTypes = ['ESCOLA BÍBLICA DOMINICAL'];
               if (getDay(dateObj) === 6) availableTypes = ['CÍRCULO DA ORAÇÃO', ...ALL_CULTO_TYPES];
@@ -504,7 +492,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button 
               onClick={() => setStep(2)}
-              className="px-5 py-3 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-300 transition-colors"
+              className="px-5 py-3 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-300 transition-colors cursor-pointer"
             >
               Revisar Dados
             </button>
