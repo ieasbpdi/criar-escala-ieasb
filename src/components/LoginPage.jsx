@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Lock, User, KeyRound, AlertCircle, LogIn, ShieldAlert } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Lock, User, KeyRound, AlertCircle, LogIn, UserPlus } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 
 export function LoginPage({ onLoginSuccess }) {
@@ -7,11 +7,27 @@ export function LoginPage({ onLoginSuccess }) {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isFirstSetup, setIsFirstSetup] = useState(false);
+
+  // Verificar se já existe algum usuário no banco
+  useEffect(() => {
+    async function checkExistingUsers() {
+      try {
+        const { data, error } = await supabase.from('usuarios_sistema').select('id').limit(1);
+        if (!error && data && data.length === 0) {
+          setIsFirstSetup(true);
+        }
+      } catch (err) {
+        console.log('Erro ao checar usuários no Supabase:', err);
+      }
+    }
+    checkExistingUsers();
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
-      setErrorMsg('Por favor, preencha o usuário e a senha.');
+      setErrorMsg('Por favor, preencha o nome de usuário e a senha.');
       return;
     }
 
@@ -19,7 +35,29 @@ export function LoginPage({ onLoginSuccess }) {
     setErrorMsg('');
 
     try {
-      // Buscar usuário no Supabase na tabela usuarios_sistema
+      if (isFirstSetup) {
+        // Cadastrar o Primeiro Usuário como Admin
+        const { data, error } = await supabase.from('usuarios_sistema').insert([{
+          username: username.trim(),
+          password: password.trim(),
+          is_admin: true
+        }]).select().single();
+
+        if (error) {
+          setErrorMsg(`Erro ao criar conta inicial: ${error.message}`);
+          setLoading(false);
+          return;
+        }
+
+        onLoginSuccess({
+          id: data.id,
+          username: data.username,
+          is_admin: true
+        });
+        return;
+      }
+
+      // Login Normal no Supabase
       const { data, error } = await supabase
         .from('usuarios_sistema')
         .select('*')
@@ -27,12 +65,7 @@ export function LoginPage({ onLoginSuccess }) {
         .single();
 
       if (error || !data) {
-        // Fallback local se o banco ainda não tiver a tabela criada
-        if (username.trim() === 'admin' && password === 'admin123') {
-          onLoginSuccess({ username: 'admin', is_admin: true });
-          return;
-        }
-        setErrorMsg('Usuário não encontrado. Verifique os dados digitados.');
+        setErrorMsg('Usuário não encontrado. Verifique se o nome foi cadastrado.');
         setLoading(false);
         return;
       }
@@ -43,7 +76,7 @@ export function LoginPage({ onLoginSuccess }) {
         return;
       }
 
-      // Sucesso
+      // Sucesso no Login
       onLoginSuccess({
         id: data.id,
         username: data.username,
@@ -77,42 +110,47 @@ export function LoginPage({ onLoginSuccess }) {
         {/* Notice */}
         <div className="p-3 bg-blue-50 border border-blue-100 rounded-2xl text-blue-800 text-xs font-semibold flex items-center gap-2">
           <Lock className="w-4 h-4 text-blue-600 shrink-0" />
-          <span>Acesso restrito. Faça login para gerenciar as escalas.</span>
+          <span>
+            {isFirstSetup 
+              ? 'Nenhuma conta cadastrada. Crie seu usuário e senha inicial (Admin).' 
+              : 'Acesso restrito. Digite seu nome e senha para acessar.'
+            }
+          </span>
         </div>
 
         {/* Error Alert */}
         {errorMsg && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-semibold flex items-center gap-2 animate-shake">
+          <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-semibold flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
-        {/* Login Form */}
+        {/* Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700">Usuário</label>
+            <label className="text-xs font-bold text-slate-700">Seu Nome / Usuário</label>
             <div className="relative">
               <input 
                 type="text" 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Nome de usuário"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
+                placeholder="Ex: Pastor Valter ou Diácono Josué"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               />
               <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700">Senha</label>
+            <label className="text-xs font-bold text-slate-700">Sua Senha</label>
             <div className="relative">
               <input 
                 type="password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Sua senha"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
+                placeholder="Digite sua senha"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               />
               <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             </div>
@@ -124,7 +162,11 @@ export function LoginPage({ onLoginSuccess }) {
             className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {loading ? (
-              <span>Autenticando...</span>
+              <span>Processando...</span>
+            ) : isFirstSetup ? (
+              <>
+                <UserPlus className="w-4 h-4" /> Criar Conta Inicial Administradora
+              </>
             ) : (
               <>
                 <LogIn className="w-4 h-4" /> Entrar no Sistema
@@ -132,12 +174,6 @@ export function LoginPage({ onLoginSuccess }) {
             )}
           </button>
         </form>
-
-        <div className="pt-2 text-center border-t border-slate-100">
-          <p className="text-[11px] text-slate-400">
-            Dica: Usuário inicial padrão: <strong className="text-slate-600">admin</strong> | Senha: <strong className="text-slate-600">admin123</strong>
-          </p>
-        </div>
 
       </div>
     </div>
