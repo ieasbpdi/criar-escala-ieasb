@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, FileDown, CheckCircle2, AlertCircle, Clock, UserCheck, Music, DoorClosed, Droplets, BookOpen, ChevronLeft } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
+import { Calendar as CalendarIcon, FileDown, CheckCircle2, AlertCircle, Clock, UserCheck, Music, DoorClosed, Droplets, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 
@@ -11,8 +11,7 @@ import { MembersModal } from './MembersModal';
 import { supabase } from '../utils/supabase';
 
 const currentDate = new Date();
-const currentYear = currentDate.getFullYear();
-const months = Array.from({ length: 12 }, (_, i) => new Date(currentYear, i, 1));
+const currentYearNum = currentDate.getFullYear();
 
 const ALL_CULTO_TYPES = [
   'Culto com a participação das famílias',
@@ -26,9 +25,13 @@ const ALL_CULTO_TYPES = [
 
 export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
   const [step, setStep] = useState(1);
+  const [selectedYear, setSelectedYear] = useState(currentYearNum);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [cultosData, setCultosData] = useState({});
   const [members, setMembers] = useState([]);
+
+  // Meses do ano selecionado
+  const yearMonths = Array.from({ length: 12 }, (_, i) => new Date(selectedYear, i, 1));
 
   // Carregar membros do Supabase
   useEffect(() => {
@@ -158,7 +161,25 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     }));
   };
 
-  const generatePDF = () => {
+  // Helper para carregar a logo no PDF como imagem
+  const getLogoDataUrl = (src) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || 500;
+        canvas.height = img.naturalHeight || 150;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  };
+
+  const generatePDF = async () => {
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -166,19 +187,34 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     });
 
     const monthNameUpper = format(selectedMonth, 'MMMM', { locale: ptBR }).toUpperCase();
+    const yearStr = selectedMonth.getFullYear();
     
-    // Header Text
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text('Igreja Evangelica Assembleia dos Santos no Brasil – Palmeira dos índios', 105, 20, { align: 'center' });
-    
+    // Tentar carregar a logo mono centralizada no topo
+    const logoUrl = `${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - TEXTO - MONO.svg`;
+    const logoData = await getLogoDataUrl(logoUrl);
+
+    let startY = 20;
+
+    if (logoData) {
+      // Desenhar logo centralizada no topo (Largura: 65mm, Altura: 16mm)
+      doc.addImage(logoData, 'PNG', 105 - 32.5, 12, 65, 16);
+      startY = 33;
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Igreja Evangelica Assembleia dos Santos no Brasil – Palmeira dos índios', 105, startY, { align: 'center' });
+      startY += 6;
+    }
+
+    // Título Principal
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.text('ESCALA DE CULTOS E OUTRAS REALIZAÇÕES', 105, 26, { align: 'center' });
-    doc.text(monthNameUpper, 105, 32, { align: 'center' });
+    doc.text('ESCALA DE CULTOS E OUTRAS REALIZAÇÕES', 105, startY, { align: 'center' });
+    startY += 6;
+    doc.text(`${monthNameUpper} DE ${yearStr}`, 105, startY, { align: 'center' });
 
-    let y = 40;
-    const pageHeight = 280;
+    let y = startY + 10;
+    const pageHeight = 275;
 
     Object.entries(cultosData).forEach(([key, item]) => {
       if (!item.enabled) return;
@@ -194,7 +230,8 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       }
 
       const isSantaCeia = item.title.toUpperCase().includes('SANTA CEIA');
-      const bannerBgColor = isSantaCeia ? [153, 0, 0] : [0, 150, 136];
+      // Vermelho bem destacado para Santa Ceia [185, 28, 28], Verde padrão para outros [0, 150, 136]
+      const bannerBgColor = isSantaCeia ? [185, 28, 28] : [0, 150, 136];
       
       doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
       doc.rect(15, y, 180, 7, 'F');
@@ -212,22 +249,23 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
 
+      // Usando marcador limpo e seguro sem caractere corrompido
       if (item.isEbd) {
-        doc.text(`➢  PROFESSOR: ${(item.professor || '').toUpperCase()}`, 20, y);
+        doc.text(`>  PROFESSOR: ${(item.professor || '').toUpperCase()}`, 20, y);
         y += 7;
       } else {
-        doc.text(`➢  DIRIGENTE: ${(item.dirigente || '').toUpperCase()}`, 20, y);
+        doc.text(`>  DIRIGENTE: ${(item.dirigente || '').toUpperCase()}`, 20, y);
         y += 5;
-        doc.text(`➢  LOUVOR: ${(item.louvor || '').toUpperCase()}`, 20, y);
+        doc.text(`>  LOUVOR: ${(item.louvor || '').toUpperCase()}`, 20, y);
         y += 5;
-        doc.text(`➢  PORTA: ${(item.porta || '').toUpperCase()}`, 20, y);
+        doc.text(`>  PORTA: ${(item.porta || '').toUpperCase()}`, 20, y);
         y += 5;
-        doc.text(`➢  ÁGUA: ${(item.agua || '').toUpperCase()}`, 20, y);
+        doc.text(`>  ÁGUA: ${(item.agua || '').toUpperCase()}`, 20, y);
         y += 7;
       }
     });
 
-    const fileName = `ESCALA DE ${monthNameUpper} - IEASB.pdf`;
+    const fileName = `ESCALA DE ${monthNameUpper} ${yearStr} - IEASB.pdf`;
     doc.save(fileName);
   };
 
@@ -245,7 +283,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
         onRemoveMember={handleRemoveMember}
       />
 
-      {/* Stepper Progress Bar Perfeitamente Alinhado */}
+      {/* Stepper Progress Bar */}
       <div className="mb-10 max-w-md mx-auto">
         <div className="relative flex items-center justify-between">
           <div className="absolute top-[18px] left-[15%] right-[15%] h-0.5 bg-slate-200 z-0" />
@@ -278,36 +316,96 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
 
       {/* STEP 1: Seleção de Mês */}
       {step === 1 && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
-          <div className="text-center mb-8">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-8">
+          
+          {/* Calendar Header */}
+          <div className="text-center">
             <h2 className="text-2xl font-bold text-slate-900 flex items-center justify-center gap-2">
               <CalendarIcon className="w-6 h-6 text-blue-600" />
-              Selecione o Mês da Escala ({currentYear})
+              Selecione o Mês da Escala ({selectedYear})
             </h2>
             <p className="text-slate-500 text-sm mt-1">
               Os feriados e datas comemorativas nacionais serão identificados automaticamente.
             </p>
           </div>
 
+          {/* Grid de Meses */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {months.map((month) => {
+            {yearMonths.map((month) => {
               const monthName = format(month, 'MMMM', { locale: ptBR });
+              const monthEnd = endOfMonth(month);
+              const isPast = isBefore(monthEnd, startOfMonth(currentDate));
+
               return (
                 <button
                   key={month.toISOString()}
                   onClick={() => handleMonthSelect(month)}
-                  className="group p-5 bg-slate-50 hover:bg-blue-50/60 border border-slate-200 hover:border-blue-300 rounded-xl flex flex-col items-center gap-3 transition-all duration-200 text-left cursor-pointer hover:shadow-md"
+                  className={`group p-5 border rounded-2xl flex flex-col items-center gap-3 transition-all duration-200 text-left cursor-pointer hover:shadow-md ${
+                    isPast 
+                      ? 'bg-slate-50/80 border-slate-200 hover:border-slate-300 opacity-75 hover:opacity-100' 
+                      : 'bg-white hover:bg-blue-50/60 border-slate-200 hover:border-blue-300 shadow-sm'
+                  }`}
                 >
-                  <div className="w-11 h-11 rounded-xl bg-blue-100/80 group-hover:bg-blue-600 text-blue-600 group-hover:text-white flex items-center justify-center transition-colors">
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
+                    isPast 
+                      ? 'bg-slate-200 text-slate-500 group-hover:bg-slate-600 group-hover:text-white' 
+                      : 'bg-blue-100/80 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'
+                  }`}>
                     <CalendarIcon className="w-5 h-5" />
                   </div>
-                  <span className="text-slate-900 font-semibold capitalize text-base group-hover:text-blue-700 transition-colors">
-                    {monthName}
-                  </span>
+
+                  <div className="text-center">
+                    <span className={`font-bold capitalize text-base block transition-colors ${
+                      isPast ? 'text-slate-600 group-hover:text-slate-900' : 'text-slate-900 group-hover:text-blue-700'
+                    }`}>
+                      {monthName}
+                    </span>
+                    {isPast && (
+                      <span className="inline-block mt-1 px-2 py-0.5 bg-slate-200 text-slate-600 font-semibold text-[10px] rounded-md uppercase tracking-wider">
+                        Passado
+                      </span>
+                    )}
+                  </div>
                 </button>
               );
             })}
           </div>
+
+          {/* Seletor de Anos Extra */}
+          <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl">
+            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+              Navegar entre Anos:
+            </span>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSelectedYear(prev => prev - 1)}
+                className="p-2 rounded-xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-1 text-xs font-semibold cursor-pointer shadow-sm"
+              >
+                <ChevronLeft className="w-4 h-4" /> {selectedYear - 1}
+              </button>
+
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="px-4 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm"
+              >
+                {Array.from({ length: 7 }, (_, i) => currentYearNum - 3 + i).map(year => (
+                  <option key={year} value={year}>
+                    Ano {year} {year === currentYearNum ? '(Atual)' : ''}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={() => setSelectedYear(prev => prev + 1)}
+                className="p-2 rounded-xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-1 text-xs font-semibold cursor-pointer shadow-sm"
+              >
+                {selectedYear + 1} <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
         </div>
       )}
 
@@ -337,7 +435,8 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
             </div>
           </div>
 
-          <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
+          {/* Lista fluida sem scroll interno separado */}
+          <div className="space-y-4">
             {Object.entries(cultosData).map(([key, item]) => {
               const dateObj = new Date(item.dateStr + 'T12:00:00');
               const dayNum = format(dateObj, 'dd');
@@ -347,12 +446,14 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
               if (item.isEbd) availableTypes = ['ESCOLA BÍBLICA DOMINICAL'];
               if (getDay(dateObj) === 6) availableTypes = ['CÍRCULO DA ORAÇÃO', ...ALL_CULTO_TYPES];
 
+              const isSantaCeia = item.title.toUpperCase().includes('SANTA CEIA');
+
               return (
                 <div 
                   key={key}
                   className={`p-5 rounded-2xl border bg-white shadow-sm transition-all ${
-                    item.title.toUpperCase().includes('SANTA CEIA')
-                      ? 'border-red-300 bg-red-50/20'
+                    isSantaCeia
+                      ? 'border-red-300 bg-red-50/30'
                       : 'border-slate-200'
                   }`}
                 >
@@ -367,7 +468,11 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                   {/* Item Header */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-3">
-                      <span className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-bold text-sm flex items-center justify-center">
+                      <span className={`w-9 h-9 rounded-xl font-bold text-sm flex items-center justify-center border ${
+                        isSantaCeia 
+                          ? 'bg-red-100 text-red-800 border-red-200' 
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}>
                         {dayNum}
                       </span>
                       <div>
