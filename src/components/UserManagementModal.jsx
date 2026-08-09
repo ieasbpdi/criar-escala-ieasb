@@ -7,7 +7,6 @@ export function UserManagementModal({ isOpen, onClose, currentUser }) {
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
-  const [adminAuthPassword, setAdminAuthPassword] = useState('');
   const [msg, setMsg] = useState({ type: '', text: '' });
 
   useEffect(() => {
@@ -44,7 +43,6 @@ export function UserManagementModal({ isOpen, onClose, currentUser }) {
     }
 
     try {
-      // Inserir no Supabase
       const { error } = await supabase.from('usuarios_sistema').insert([{
         username: newUsername.trim(),
         password: newPassword.trim(),
@@ -60,7 +58,6 @@ export function UserManagementModal({ isOpen, onClose, currentUser }) {
       setNewUsername('');
       setNewPassword('');
       setIsAdmin(false);
-      setAdminAuthPassword('');
       loadSystemUsers();
     } catch (err) {
       setMsg({ type: 'error', text: 'Erro de conexão ao criar usuário.' });
@@ -128,7 +125,7 @@ export function UserManagementModal({ isOpen, onClose, currentUser }) {
                   type="text" 
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
-                  placeholder="Ex: pastor.valter"
+                  placeholder="Nome de usuário"
                   className="w-full mt-1 px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -139,7 +136,7 @@ export function UserManagementModal({ isOpen, onClose, currentUser }) {
                   type="password" 
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Senha"
+                  placeholder="Senha de acesso"
                   className="w-full mt-1 px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -158,7 +155,7 @@ export function UserManagementModal({ isOpen, onClose, currentUser }) {
 
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors cursor-pointer"
               >
                 Cadastrar
               </button>
@@ -184,7 +181,7 @@ export function UserManagementModal({ isOpen, onClose, currentUser }) {
                   {u.username !== currentUser?.username && (
                     <button 
                       onClick={() => handleDeleteUser(u.id, u.username)}
-                      className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors"
+                      className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors cursor-pointer"
                       title="Excluir usuário"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -201,7 +198,7 @@ export function UserManagementModal({ isOpen, onClose, currentUser }) {
         <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold transition-colors"
+            className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer"
           >
             Fechar
           </button>

@@ -43,7 +43,7 @@ export function MembersModal({ isOpen, onClose, members, onAddMember, onRemoveMe
               type="text" 
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="Ex: Diácono João ou Irmã Maria"
+              placeholder="Digite o nome da pessoa"
               className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <button

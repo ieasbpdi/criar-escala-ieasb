@@ -113,7 +113,7 @@ export function LoginPage({ onLoginSuccess }) {
           <span>
             {isFirstSetup 
               ? 'Nenhuma conta cadastrada. Crie seu usuário e senha inicial (Admin).' 
-              : 'Acesso restrito. Digite seu nome e senha para acessar.'
+              : 'Acesso restrito. Digite seu nome de usuário e senha para acessar.'
             }
           </span>
         </div>
@@ -135,7 +135,7 @@ export function LoginPage({ onLoginSuccess }) {
                 type="text" 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Ex: Pastor Valter ou Diácono Josué"
+                placeholder="Digite seu nome de usuário"
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               />
               <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
