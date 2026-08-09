@@ -1,33 +1,4 @@
-export const DEFAULT_MEMBERS = [
-  'Pastor Valter',
-  'Missionária Maria',
-  'Diácono Regivaldo',
-  'Diácono José Yago',
-  'Diácono ERIVÂNIO',
-  'Diácono NOELCIO',
-  'Diácono Josué',
-  'Auxiliar Kauã',
-  'Auxiliar Diego',
-  'Auxiliar Benedito',
-  'Irmã Clévia',
-  'Irmã Simone',
-  'Irmã Verônica',
-  'Irmã Maria José',
-  'Irmã Keila',
-  'Irmã Edilma',
-  'Irmã Josefa',
-  'Irmã Thayllane',
-  'Irmã Vanessa',
-  'Irmão Daniel',
-  'Irmã Vitória',
-  'Irmã Khauany',
-  'Irmã Sofia',
-  'Irmão Vinícius',
-  'Irmão Maxswell',
-  'Irmão Melqui Samuel',
-  'Irmã Júlia',
-  'Irmão Tharlyson'
-];
+export const DEFAULT_MEMBERS = [];
 
 function getCategoryOrder(name) {
   const lower = name.toLowerCase();
@@ -45,7 +16,7 @@ function getCleanNameForSort(name) {
 }
 
 export function sortMembers(members) {
-  // Remove duplicadas mantendo uniques
+  if (!members || !Array.isArray(members)) return [];
   const uniqueMembers = Array.from(new Set(members));
 
   return uniqueMembers.sort((a, b) => {
@@ -56,7 +27,6 @@ export function sortMembers(members) {
       return catA - catB;
     }
 
-    // Mesmo grupo: ordenar por nome alfabético
     const nameA = getCleanNameForSort(a);
     const nameB = getCleanNameForSort(b);
     return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
