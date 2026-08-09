@@ -33,22 +33,26 @@ jobs:
       - name: Build project
         run: npm run build
 
-      # Deploy para a branch gh-pages (Garante funcionamento se "Deploy from a branch" estiver selecionado)
+      # Publica na branch gh-pages
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
 
-      # Upload para GitHub Actions (Garante funcionamento se "GitHub Actions" estiver selecionado)
+      # Upload para deployment do GitHub Pages via Actions
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
 
   deploy-pages:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     needs: build-and-deploy
     runs-on: ubuntu-latest
+    name: Deploy
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
