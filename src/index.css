@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1E293B; /* Slate 800 */
+  --color-secondary: #0F172A; /* Slate 900 */
+}
+
+body {
+  @apply bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-200;
+}
