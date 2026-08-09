@@ -189,16 +189,16 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     const monthNameUpper = format(selectedMonth, 'MMMM', { locale: ptBR }).toUpperCase();
     const yearStr = selectedMonth.getFullYear();
     
-    // Tentar carregar a logo mono centralizada no topo
-    const logoUrl = `${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - TEXTO - MONO.svg`;
+    // Tentar carregar a logo vertical centralizada no topo
+    const logoUrl = `${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - TEXTO - VERTICAL.svg`;
     const logoData = await getLogoDataUrl(logoUrl);
 
     let startY = 20;
 
     if (logoData) {
-      // Desenhar logo centralizada no topo (Largura: 65mm, Altura: 16mm)
-      doc.addImage(logoData, 'PNG', 105 - 32.5, 12, 65, 16);
-      startY = 33;
+      // Desenhar logo centralizada no topo (Largura: 26mm, Altura: 32mm)
+      doc.addImage(logoData, 'PNG', 105 - 13, 10, 26, 32);
+      startY = 48;
     } else {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
@@ -243,7 +243,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       const bannerText = `DIA ${dayNumStr} DE ${monthNameUpper} (${dayOfWeekStr}) – ${item.title.toUpperCase()} ÀS ${item.time}`;
       doc.text(bannerText, 17, y + 5);
 
-      y += 10;
+      y += 14; // Aumentado para dar folga em relação ao retângulo do dia
 
       doc.setTextColor(0, 0, 0);
       doc.setFont('helvetica', 'normal');
