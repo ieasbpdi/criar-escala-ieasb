@@ -321,7 +321,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     let startY = 15;
 
     if (logoData) {
-      const targetWidth = 50; // Ajustado para não ficar tão gigante
+      const targetWidth = 35; // Ajustado para não ficar gigante
       const targetHeight = (targetWidth * logoData.height) / logoData.width;
       doc.addImage(logoData.url, 'PNG', 105 - (targetWidth / 2), startY, targetWidth, targetHeight);
       startY += targetHeight + 5;
@@ -339,9 +339,6 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     doc.setFontSize(12);
     doc.text('ESCALA DE CULTOS E OUTRAS REALIZAÇÕES', 105, startY, { align: 'center' });
     startY += 6;
-    doc.text(`MÊS DE ${yearStr}`, 105, startY, { align: 'center' }); // O modelo diz "MÊS DE ANO", vamos colocar ex: DEZEMBRO DE 2026. A string é MÊS DE ${yearStr} ? Wait. "MÊS DE AGOSTO DE 2026" or just "AGOSTO DE 2026"? O user pediu "MÊS DE ANO", então vou colocar `MÊS DE ${yearStr}` e talvez o mês esteja implícito. Na verdade, "MÊS DE ${monthNameUpper} DE ${yearStr}" seria mais adequado. O modelo mostra "MÊS DE ANO" apenas como placeholder. Vou usar `${monthNameUpper} DE ${yearStr}`.
-    // Correção: O placeholder era "MÊS DE ANO", então colocarei `${monthNameUpper} DE ${yearStr}`
-    // Wait, let's just replace the line with the proper dynamic string.
     doc.text(`MÊS DE ${monthNameUpper} DE ${yearStr}`, 105, startY, { align: 'center' });
 
     let y = startY + 10;
@@ -361,7 +358,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       }
 
       const isSantaCeia = item.title.toUpperCase().includes('SANTA CEIA');
-      const bannerBgColor = isSantaCeia ? [185, 28, 28] : [0, 150, 136];
+      const bannerBgColor = isSantaCeia ? [186, 28, 28] : [0, 150, 135];
       
       doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
       doc.rect(15, y, 180, 6, 'F');
@@ -383,55 +380,59 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       if (item.isEbd) {
         doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
         doc.circle(17, y - 1.2, 1.2, 'F');
+        doc.setTextColor(0, 0, 0);
         doc.text(`PROFESSOR: ${(item.professor || '').toUpperCase()}`, 20, y);
         y += 7;
       } else {
         doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
         doc.circle(17, y - 1.2, 1.2, 'F');
+        doc.setTextColor(0, 0, 0);
         doc.text(`DIRIGENTE: ${(item.dirigente || '').toUpperCase()}`, 20, y);
         y += 6;
         
+        doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
         doc.circle(17, y - 1.2, 1.2, 'F');
+        doc.setTextColor(0, 0, 0);
         doc.text(`LOUVOR: ${(item.louvor || '').toUpperCase()}`, 20, y);
         y += 6;
         
+        doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
         doc.circle(17, y - 1.2, 1.2, 'F');
+        doc.setTextColor(0, 0, 0);
         doc.text(`PORTA: ${(item.porta || '').toUpperCase()}`, 20, y);
         y += 6;
         
+        doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
         doc.circle(17, y - 1.2, 1.2, 'F');
+        doc.setTextColor(0, 0, 0);
         doc.text(`ÁGUA: ${(item.agua || '').toUpperCase()}`, 20, y);
         y += 10;
       }
     });
 
     // Bloco Final (Rodapé)
-    if (y > 230) {
+    if (y > 220) {
       doc.addPage();
-      y = 30;
-    } else {
-      y += 15;
     }
+    
+    let footerY = 230; // Fixado a uma distância constante do final
 
     if (logoVertData) {
-      const targetWidth = 25;
+      const targetWidth = 45;
       const targetHeight = (targetWidth * logoVertData.height) / logoVertData.width;
-      doc.addImage(logoVertData.url, 'PNG', 105 - (targetWidth / 2), y, targetWidth, targetHeight);
-      y += targetHeight + 6;
+      doc.addImage(logoVertData.url, 'PNG', 105 - (targetWidth / 2), footerY, targetWidth, targetHeight);
+      footerY += targetHeight + 6;
+    } else {
+      footerY += 30;
     }
 
     doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text('ASSEMBLÉIA DOS\nSANTOS NO BRASIL', 105, y, { align: 'center' });
-    y += 12;
-
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
     
     // Lado esquerdo (Alinhado à direita)
     const leftX = 100;
-    let leftY = y;
+    let leftY = footerY;
     doc.text('Pastor José Valter da Silva', leftX, leftY, { align: 'right' }); leftY += 5;
     doc.text('Secretários: Primeiro(a) secretário(a)', leftX, leftY, { align: 'right' }); leftY += 5;
     doc.text('Vanessa Soares de Araújo; segundo(a)', leftX, leftY, { align: 'right' }); leftY += 5;
@@ -439,7 +440,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     
     // Lado direito (Alinhado à esquerda)
     const rightX = 110;
-    let rightY = y;
+    let rightY = footerY;
     doc.text('CNPJ: 08.936.324/0001-48', rightX, rightY, { align: 'left' }); rightY += 5;
     doc.text('Loteamento Bosque das Bromélias, Quadra', rightX, rightY, { align: 'left' }); rightY += 5;
     doc.text('C, Nº 8, Palmeira de Fora - Palmeira dos', rightX, rightY, { align: 'left' }); rightY += 5;
