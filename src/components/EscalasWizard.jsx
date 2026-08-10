@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, FileDown, CheckCircle2, AlertCircle, Clock, UserCheck, Music, DoorClosed, Droplets, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, FileDown, CheckCircle2, AlertCircle, Clock, UserCheck, Music, DoorClosed, Droplets, BookOpen, ChevronLeft, ChevronRight, Gift } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -25,10 +25,17 @@ const ALL_CULTO_TYPES = [
 
 export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
   const [step, setStep] = useState(1);
+
+  // Rolagem para o topo ao trocar de passo
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
   const [selectedYear, setSelectedYear] = useState(currentYearNum);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [cultosData, setCultosData] = useState({});
   const [members, setMembers] = useState([]);
+  const [upcomingBirthdays, setUpcomingBirthdays] = useState([]);
+  const [allBirthdays, setAllBirthdays] = useState([]);
 
   // Meses do ano selecionado
   const yearMonths = Array.from({ length: 12 }, (_, i) => new Date(selectedYear, i, 1));
@@ -47,6 +54,42 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       }
     }
     loadMembersFromSupabase();
+  }, []);
+
+  // Carregar Aniversários do Supabase
+  useEffect(() => {
+    async function loadBirthdays() {
+      try {
+        const { data, error } = await supabase.from('aniversarios').select('*');
+        if (!error && data) {
+          setAllBirthdays(data); // Para usar no passo 2
+          
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          const upcoming = data.filter(b => {
+            let bDate = new Date(today.getFullYear(), b.mes - 1, b.dia);
+            if (bDate < today) {
+              bDate.setFullYear(today.getFullYear() + 1);
+            }
+            const diffTime = bDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            return diffDays >= 0 && diffDays <= 3;
+          });
+          
+          setUpcomingBirthdays(upcoming.sort((a,b) => {
+            let da = new Date(today.getFullYear(), a.mes - 1, a.dia);
+            if (da < today) da.setFullYear(today.getFullYear() + 1);
+            let db = new Date(today.getFullYear(), b.mes - 1, b.dia);
+            if (db < today) db.setFullYear(today.getFullYear() + 1);
+            return da - db;
+          }));
+        }
+      } catch (err) {
+        console.log('Erro ao carregar aniversários:', err);
+      }
+    }
+    loadBirthdays();
   }, []);
 
   const handleAddMember = async (name) => {
@@ -78,6 +121,8 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     const holidays = getBrazilianHolidays(month.getFullYear());
     const initialData = {};
 
+    const savedDefaults = JSON.parse(localStorage.getItem('escalaDefaults') || '{}');
+
     days.forEach(day => {
       const dayOfWeek = getDay(day);
       const dateStr = format(day, 'yyyy-MM-dd');
@@ -86,66 +131,111 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
         h.date.getDate() === day.getDate() && h.date.getMonth() === day.getMonth()
       );
 
+      // Check if it's new year eve
+      const isNewYearEve = day.getDate() === 31 && day.getMonth() === 11;
+      const isEveOfHoliday = holidays.find(h => {
+        const hDate = new Date(h.date);
+        hDate.setDate(hDate.getDate() - 1);
+        return hDate.getDate() === day.getDate() && hDate.getMonth() === day.getMonth();
+      });
+
+      const holidayInfo = isNewYearEve ? 'CULTO DE VIRADA' : (matchedHoliday ? matchedHoliday.name : null);
+      const eveInfo = isEveOfHoliday ? `Véspera de ${isEveOfHoliday.name}` : null;
+      
+      const birthdaysOnDay = allBirthdays.filter(b => b.dia === day.getDate() && b.mes === day.getMonth() + 1);
+      const birthdayInfo = birthdaysOnDay.length > 0 
+        ? `Aniversário de: ${birthdaysOnDay.map(b => b.membro_nome).join(', ')}`
+        : null;
+
+      const getDefault = (dWeek, time, field, fallback = '') => savedDefaults[`${dWeek}_${time}_${field}`] || fallback;
+
       if (dayOfWeek === 0) { // Domingo
         initialData[`${dateStr}_ebd`] = {
           isEbd: true,
           dateStr,
           title: 'ESCOLA BÍBLICA DOMINICAL',
           time: '09H30',
-          professor: '',
+          professor: getDefault(0, 'ebd', 'professor'),
           enabled: true,
-          holiday: null
+          holiday: holidayInfo,
+          eve: eveInfo,
+          birthday: birthdayInfo
         };
         initialData[`${dateStr}_noite`] = {
           isEbd: false,
           dateStr,
-          title: matchedHoliday ? matchedHoliday.name : 'Culto com a participação das famílias',
+          title: holidayInfo || 'Culto com a participação das famílias',
           time: '19H00',
-          dirigente: '',
-          louvor: 'TODOS OS DEPARTAMENTOS',
-          porta: '',
-          agua: '',
+          dirigente: getDefault(0, 'noite', 'dirigente'),
+          louvor: getDefault(0, 'noite', 'louvor', 'TODOS OS DEPARTAMENTOS'),
+          porta: getDefault(0, 'noite', 'porta'),
+          agua: getDefault(0, 'noite', 'agua'),
           enabled: true,
-          holiday: matchedHoliday ? matchedHoliday.name : null
+          holiday: holidayInfo,
+          eve: eveInfo,
+          birthday: birthdayInfo
         };
       } else if (dayOfWeek === 2) { // Terça
         initialData[`${dateStr}_noite`] = {
           isEbd: false,
           dateStr,
-          title: matchedHoliday ? matchedHoliday.name : 'Culto de doutrina',
+          title: holidayInfo || 'Culto de doutrina',
           time: '19H00',
-          dirigente: '',
-          louvor: '',
-          porta: '',
-          agua: '',
+          dirigente: getDefault(2, 'noite', 'dirigente'),
+          louvor: getDefault(2, 'noite', 'louvor'),
+          porta: getDefault(2, 'noite', 'porta'),
+          agua: getDefault(2, 'noite', 'agua'),
           enabled: true,
-          holiday: matchedHoliday ? matchedHoliday.name : null
+          holiday: holidayInfo,
+          eve: eveInfo,
+          birthday: birthdayInfo
         };
       } else if (dayOfWeek === 4) { // Quinta
         initialData[`${dateStr}_noite`] = {
           isEbd: false,
           dateStr,
-          title: matchedHoliday ? matchedHoliday.name : 'Culto de portas abertas',
+          title: holidayInfo || 'Culto de portas abertas',
           time: '19H00',
-          dirigente: '',
-          louvor: 'TODOS OS DEPARTAMENTOS',
-          porta: '',
-          agua: '',
+          dirigente: getDefault(4, 'noite', 'dirigente'),
+          louvor: getDefault(4, 'noite', 'louvor', 'TODOS OS DEPARTAMENTOS'),
+          porta: getDefault(4, 'noite', 'porta'),
+          agua: getDefault(4, 'noite', 'agua'),
           enabled: true,
-          holiday: matchedHoliday ? matchedHoliday.name : null
+          holiday: holidayInfo,
+          eve: eveInfo,
+          birthday: birthdayInfo
         };
       } else if (dayOfWeek === 6) { // Sábado
         initialData[`${dateStr}_tarde`] = {
           isEbd: false,
           dateStr,
-          title: matchedHoliday ? matchedHoliday.name : 'CÍRCULO DA ORAÇÃO',
+          title: holidayInfo || 'CÍRCULO DA ORAÇÃO',
           time: '14H00',
-          dirigente: '',
-          louvor: '',
-          porta: '',
-          agua: '',
+          dirigente: getDefault(6, 'tarde', 'dirigente'),
+          louvor: getDefault(6, 'tarde', 'louvor'),
+          porta: getDefault(6, 'tarde', 'porta'),
+          agua: getDefault(6, 'tarde', 'agua'),
           enabled: true,
-          holiday: matchedHoliday ? matchedHoliday.name : null
+          holiday: holidayInfo,
+          eve: eveInfo,
+          birthday: birthdayInfo
+        };
+      }
+      
+      if (isNewYearEve && dayOfWeek !== 0 && dayOfWeek !== 2 && dayOfWeek !== 4 && dayOfWeek !== 6) {
+         initialData[`${dateStr}_noite`] = {
+          isEbd: false,
+          dateStr,
+          title: 'CULTO DE VIRADA',
+          time: '21H00',
+          dirigente: getDefault(dayOfWeek, 'noite', 'dirigente'),
+          louvor: getDefault(dayOfWeek, 'noite', 'louvor', 'TODOS OS DEPARTAMENTOS'),
+          porta: getDefault(dayOfWeek, 'noite', 'porta'),
+          agua: getDefault(dayOfWeek, 'noite', 'agua'),
+          enabled: true,
+          holiday: 'CULTO DE VIRADA',
+          eve: eveInfo,
+          birthday: birthdayInfo
         };
       }
     });
@@ -161,7 +251,6 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     }));
   };
 
-  // Helper para carregar a logo no PDF como imagem
   const getLogoDataUrl = (src) => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -172,7 +261,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
         canvas.height = img.naturalHeight || 150;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL('image/png'));
+        resolve({ url: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height });
       };
       img.onerror = () => resolve(null);
       img.src = src;
@@ -196,9 +285,11 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     let startY = 20;
 
     if (logoData) {
-      // Logo centralizada (Largura 50mm, Altura 16mm ajustada)
-      doc.addImage(logoData, 'PNG', 105 - 25, 10, 50, 16);
-      startY = 32;
+      // Calcular altura proporcional baseada na largura de 50mm
+      const targetWidth = 50;
+      const targetHeight = (targetWidth * logoData.height) / logoData.width;
+      doc.addImage(logoData.url, 'PNG', 105 - (targetWidth / 2), 10, targetWidth, targetHeight);
+      startY = 10 + targetHeight + 5;
       doc.setTextColor(100, 100, 100);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
@@ -277,6 +368,51 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
 
   const sortedMemberList = sortMembers(members);
 
+  const handleSetDefault = (dayOfWeek, timeKey, field, value, isChecked) => {
+    const defaults = JSON.parse(localStorage.getItem('escalaDefaults') || '{}');
+    const key = `${dayOfWeek}_${timeKey}_${field}`;
+    if (isChecked) {
+      defaults[key] = value;
+    } else {
+      delete defaults[key];
+    }
+    localStorage.setItem('escalaDefaults', JSON.stringify(defaults));
+  };
+
+  const handleSaveTemporary = () => {
+    const key = `escalaTempData_${selectedMonth.getFullYear()}_${selectedMonth.getMonth()}`;
+    const payload = {
+      expiry: new Date().getTime() + (7 * 24 * 60 * 60 * 1000),
+      data: cultosData
+    };
+    localStorage.setItem(key, JSON.stringify(payload));
+    alert('Os dados desta escala foram salvos no seu navegador e ficarão disponíveis pelos próximos 7 dias.');
+    setStep(2);
+  };
+
+  const getTemporaryData = (year, monthIndex) => {
+    try {
+      const key = `escalaTempData_${year}_${monthIndex}`;
+      const payloadStr = localStorage.getItem(key);
+      if (!payloadStr) return null;
+      const payload = JSON.parse(payloadStr);
+      if (new Date().getTime() > payload.expiry) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      return payload.data;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleContinueSaved = (month, savedData, e) => {
+    e.stopPropagation();
+    setSelectedMonth(month);
+    setCultosData(savedData);
+    setStep(2);
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       
@@ -324,6 +460,34 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       {step === 1 && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-8">
           
+          {/* Banner de Aniversários */}
+          {upcomingBirthdays.length > 0 && (
+            <div className="bg-gradient-to-r from-fuchsia-600 to-purple-600 rounded-2xl p-4 sm:p-5 shadow-lg shadow-fuchsia-500/20 text-white flex flex-col sm:flex-row items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+                <Gift className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <h3 className="font-bold text-lg leading-tight">Aniversariantes Próximos 🎉</h3>
+                <p className="text-fuchsia-100 text-sm mt-0.5">
+                  Não esqueça de parabenizar nossos irmãos.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 w-full sm:w-auto">
+                {upcomingBirthdays.map(b => {
+                  const isToday = b.dia === currentDate.getDate() && b.mes === currentDate.getMonth() + 1;
+                  return (
+                    <div key={b.membro_nome} className="bg-white/10 px-3 py-2 rounded-lg backdrop-blur-sm border border-white/20 flex items-center justify-between gap-4 text-sm font-medium">
+                      <span>{b.membro_nome}</span>
+                      <span className="bg-white text-fuchsia-600 px-2 py-0.5 rounded text-xs font-bold whitespace-nowrap">
+                        {isToday ? 'É Hoje!' : `Dia ${String(b.dia).padStart(2,'0')}/${String(b.mes).padStart(2,'0')}`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Calendar Header */}
           <div className="text-center">
             <h2 className="text-2xl font-bold text-slate-900 flex items-center justify-center gap-2">
@@ -360,7 +524,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                     <CalendarIcon className="w-5 h-5" />
                   </div>
 
-                  <div className="text-center">
+                  <div className="text-center w-full">
                     <span className={`font-bold capitalize text-base block transition-colors ${
                       isPast ? 'text-slate-600 group-hover:text-slate-900' : 'text-slate-900 group-hover:text-blue-700'
                     }`}>
@@ -371,6 +535,22 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                         Passado
                       </span>
                     )}
+                    
+                    {(() => {
+                      const savedData = getTemporaryData(month.getFullYear(), month.getMonth());
+                      if (savedData) {
+                        return (
+                          <button
+                            onClick={(e) => handleContinueSaved(month, savedData, e)}
+                            className="mt-3 w-full py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold rounded-lg transition-colors border border-amber-300"
+                          >
+                            Continuar preenchimento
+                          </button>
+                        );
+                      }
+                      return null;
+                    })()}
+
                   </div>
                 </button>
               );
@@ -466,7 +646,23 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                   {item.holiday && (
                     <div className="mb-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                      <span>Data Especial Detectada Automática: <strong>{item.holiday}</strong></span>
+                      <span>Data Especial Detectada: <strong>{item.holiday}</strong></span>
+                    </div>
+                  )}
+                  
+                  {/* Alert Véspera de Feriado */}
+                  {item.eve && (
+                    <div className="mb-3 p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-blue-600 shrink-0" />
+                      <span>Lembrete: <strong>{item.eve}</strong></span>
+                    </div>
+                  )}
+
+                  {/* Alert Aniversário */}
+                  {item.birthday && (
+                    <div className="mb-3 p-2.5 rounded-xl bg-fuchsia-50 border border-fuchsia-200 text-fuchsia-800 text-xs font-semibold flex items-center gap-2">
+                      <Gift className="w-4 h-4 text-fuchsia-600 shrink-0" />
+                      <span>{item.birthday}</span>
                     </div>
                   )}
 
@@ -528,9 +724,15 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                       {/* Integrantes com CustomSelect */}
                       {item.isEbd ? (
                         <div className="flex flex-col gap-1.5">
-                          <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                            <BookOpen className="w-4 h-4 text-blue-600" /> Professor da EBD
-                          </label>
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                              <BookOpen className="w-4 h-4 text-blue-600" /> Professor da EBD
+                            </label>
+                            <label className="flex items-center gap-1 cursor-pointer">
+                              <input type="checkbox" className="w-3 h-3 text-blue-600" onChange={(e) => handleSetDefault(getDay(dateObj), 'ebd', 'professor', item.professor, e.target.checked)} />
+                              <span className="text-[10px] text-slate-500 font-semibold">Deixar padrão</span>
+                            </label>
+                          </div>
                           <CustomSelect 
                             value={item.professor || ''}
                             onChange={(val) => handleUpdateItem(key, 'professor', val)}
@@ -542,9 +744,15 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                           
                           <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                              <UserCheck className="w-3.5 h-3.5 text-blue-600" /> Dirigente
-                            </label>
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                <UserCheck className="w-3.5 h-3.5 text-blue-600" /> Dirigente
+                              </label>
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <input type="checkbox" className="w-3 h-3 text-blue-600" onChange={(e) => handleSetDefault(getDay(dateObj), getDay(dateObj) === 6 ? 'tarde' : 'noite', 'dirigente', item.dirigente, e.target.checked)} />
+                                <span className="text-[10px] text-slate-500 font-semibold">Deixar padrão</span>
+                              </label>
+                            </div>
                             <CustomSelect 
                               value={item.dirigente || ''}
                               onChange={(val) => handleUpdateItem(key, 'dirigente', val)}
@@ -553,9 +761,15 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                           </div>
 
                           <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                              <Music className="w-3.5 h-3.5 text-blue-600" /> Louvor
-                            </label>
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                <Music className="w-3.5 h-3.5 text-blue-600" /> Louvor
+                              </label>
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <input type="checkbox" className="w-3 h-3 text-blue-600" onChange={(e) => handleSetDefault(getDay(dateObj), getDay(dateObj) === 6 ? 'tarde' : 'noite', 'louvor', item.louvor, e.target.checked)} />
+                                <span className="text-[10px] text-slate-500 font-semibold">Deixar padrão</span>
+                              </label>
+                            </div>
                             <CustomSelect 
                               value={item.louvor || ''}
                               onChange={(val) => handleUpdateItem(key, 'louvor', val)}
@@ -564,9 +778,15 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                           </div>
 
                           <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                              <DoorClosed className="w-3.5 h-3.5 text-blue-600" /> Porta
-                            </label>
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                <DoorClosed className="w-3.5 h-3.5 text-blue-600" /> Porta
+                              </label>
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <input type="checkbox" className="w-3 h-3 text-blue-600" onChange={(e) => handleSetDefault(getDay(dateObj), getDay(dateObj) === 6 ? 'tarde' : 'noite', 'porta', item.porta, e.target.checked)} />
+                                <span className="text-[10px] text-slate-500 font-semibold">Deixar padrão</span>
+                              </label>
+                            </div>
                             <CustomSelect 
                               value={item.porta || ''}
                               onChange={(val) => handleUpdateItem(key, 'porta', val)}
@@ -575,9 +795,15 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                           </div>
 
                           <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                              <Droplets className="w-3.5 h-3.5 text-blue-600" /> Água
-                            </label>
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                <Droplets className="w-3.5 h-3.5 text-blue-600" /> Água
+                              </label>
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <input type="checkbox" className="w-3 h-3 text-blue-600" onChange={(e) => handleSetDefault(getDay(dateObj), getDay(dateObj) === 6 ? 'tarde' : 'noite', 'agua', item.agua, e.target.checked)} />
+                                <span className="text-[10px] text-slate-500 font-semibold">Deixar padrão</span>
+                              </label>
+                            </div>
                             <CustomSelect 
                               value={item.agua || ''}
                               onChange={(val) => handleUpdateItem(key, 'agua', val)}
@@ -608,28 +834,35 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
             Sua escala para o mês de <strong className="text-slate-900 capitalize">{format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}</strong> foi estruturada com sucesso.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button 
-              onClick={() => setStep(2)}
-              className="px-5 py-3 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-300 transition-colors cursor-pointer"
-            >
-              Revisar Dados
-            </button>
-            <button 
-              onClick={generatePDF}
-              className="px-6 py-3 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl shadow-md shadow-green-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <FileDown className="w-5 h-5" /> Baixar PDF Formatado
-            </button>
-            <button
-              onClick={() => setStep(2)}
-              className="mt-3 w-full max-w-sm mx-auto px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer border border-slate-300"
-            >
-              Revisar Dados (Salvar Temporário)
-            </button>
+          <div className="flex flex-col gap-3 justify-center mt-6">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button 
+                onClick={generatePDF}
+                className="px-6 py-4 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl shadow-md shadow-green-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
+              >
+                <FileDown className="w-5 h-5" /> Baixar PDF Formatado
+              </button>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <button
+                onClick={handleSaveTemporary}
+                className="px-6 py-3 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-bold rounded-xl flex-1 max-w-[280px] transition-all cursor-pointer border border-amber-300"
+              >
+                Salvar Temporário e Revisar
+              </button>
+              <div className="relative group cursor-help">
+                <AlertCircle className="w-5 h-5 text-amber-500" />
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-64 bg-slate-800 text-white text-xs p-3 rounded-xl shadow-xl z-50">
+                  Esta função salva os dados da escala atual no seu navegador por até 7 dias para revisão posterior. Para recuperar, basta voltar ao passo 1 e clicar em "Continuar preenchimento".
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                </div>
+              </div>
+            </div>
+
             <button
               onClick={() => setStep(1)}
-              className="mt-3 w-full max-w-sm mx-auto px-6 py-4 bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer border border-slate-200"
+              className="w-full max-w-sm mx-auto px-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer border border-slate-200"
             >
               Voltar à Página Inicial
             </button>

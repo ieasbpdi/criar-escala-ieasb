@@ -4,6 +4,8 @@ import { Footer } from './components/Footer';
 import { EscalasWizard } from './components/EscalasWizard';
 import { LoginPage } from './components/LoginPage';
 import { UserManagementModal } from './components/UserManagementModal';
+import { BirthdaysModal } from './components/BirthdaysModal';
+import { initPushNotifications } from './utils/pushNotifications';
 
 function App() {
   const [currentUser, setCurrentUser] = useState(() => {
@@ -13,6 +15,14 @@ function App() {
 
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
   const [isUserManagementModalOpen, setIsUserManagementModalOpen] = useState(false);
+  const [isBirthdaysModalOpen, setIsBirthdaysModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (currentUser) {
+      // Inicia o processo de push notification assim que logado
+      initPushNotifications();
+    }
+  }, [currentUser]);
 
   const handleLoginSuccess = (userObj) => {
     setCurrentUser(userObj);
@@ -35,6 +45,7 @@ function App() {
         currentUser={currentUser}
         onOpenMembersModal={() => setIsMembersModalOpen(true)}
         onOpenUserManagementModal={() => setIsUserManagementModalOpen(true)}
+        onOpenBirthdaysModal={() => setIsBirthdaysModalOpen(true)}
         onLogout={handleLogout}
       />
       
@@ -49,6 +60,11 @@ function App() {
         isOpen={isUserManagementModalOpen}
         onClose={() => setIsUserManagementModalOpen(false)}
         currentUser={currentUser}
+      />
+
+      <BirthdaysModal
+        isOpen={isBirthdaysModalOpen}
+        onClose={() => setIsBirthdaysModalOpen(false)}
       />
 
       <Footer />

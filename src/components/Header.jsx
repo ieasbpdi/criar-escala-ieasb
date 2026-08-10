@@ -1,7 +1,7 @@
 import React from 'react';
-import { Users, Shield, LogOut, UserCheck } from 'lucide-react';
+import { Users, Shield, LogOut, UserCheck, Gift } from 'lucide-react';
 
-export function Header({ currentUser, onOpenMembersModal, onOpenUserManagementModal, onLogout }) {
+export function Header({ currentUser, onOpenMembersModal, onOpenUserManagementModal, onOpenBirthdaysModal, onLogout }) {
   return (
     <header className="bg-white border-b border-slate-200 text-slate-900 shadow-sm relative z-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col items-start gap-4">
@@ -45,6 +45,15 @@ export function Header({ currentUser, onOpenMembersModal, onOpenUserManagementMo
           >
             <Users className="w-4 h-4 text-blue-600" />
             <span>Gerenciar Nomes</span>
+          </button>
+
+          <button
+            onClick={onOpenBirthdaysModal}
+            className="px-3.5 py-2 rounded-xl bg-fuchsia-50 hover:bg-fuchsia-100 border border-fuchsia-300 text-fuchsia-900 text-xs sm:text-sm font-semibold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+            title="Gerenciar aniversários dos membros"
+          >
+            <Gift className="w-4 h-4 text-fuchsia-600" />
+            <span>Gerenciar Aniversários</span>
           </button>
 
           {currentUser?.is_admin && (
