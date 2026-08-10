@@ -374,7 +374,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       y += 11;
 
       doc.setTextColor(0, 0, 0);
-      doc.setFont('helvetica', 'bold'); // Conforme solicitado: nome de cada um e função em Arial Bold
+      doc.setFont('helvetica', 'normal');
       doc.setFontSize(11);
 
       if (item.isEbd) {
@@ -418,7 +418,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     let footerY = 230; // Fixado a uma distância constante do final
 
     if (logoVertData) {
-      const targetWidth = 45;
+      const targetWidth = 35;
       const targetHeight = (targetWidth * logoVertData.height) / logoVertData.width;
       doc.addImage(logoVertData.url, 'PNG', 105 - (targetWidth / 2), footerY, targetWidth, targetHeight);
       footerY += targetHeight + 6;
