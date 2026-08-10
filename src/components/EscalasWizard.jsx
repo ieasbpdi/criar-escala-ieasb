@@ -365,6 +365,10 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
 
     const fileName = `ESCALA DE ${monthNameUpper} ${yearStr} - IEASB.pdf`;
     doc.save(fileName);
+    
+    // Salva automaticamente e mostra o modal
+    handleSaveTemporary(true);
+    setShowSuccessModal(true);
   };
 
   const sortedMemberList = sortMembers(members);
@@ -378,17 +382,6 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       delete defaults[key];
     }
     localStorage.setItem('escalaDefaults', JSON.stringify(defaults));
-  };
-
-  const handleSaveTemporary = () => {
-    const key = `escalaTempData_${selectedMonth.getFullYear()}_${selectedMonth.getMonth()}`;
-    const payload = {
-      expiry: new Date().getTime() + (7 * 24 * 60 * 60 * 1000),
-      data: cultosData
-    };
-    localStorage.setItem(key, JSON.stringify(payload));
-    alert('Os dados desta escala foram salvos no seu navegador e ficarão disponíveis pelos próximos 7 dias.');
-    setStep(2);
   };
 
   const getTemporaryData = (year, monthIndex) => {
@@ -425,6 +418,35 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
         onAddMember={handleAddMember}
         onRemoveMember={handleRemoveMember}
       />
+
+      {/* Modal de Sucesso após gerar PDF */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden animate-slideUp">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Salvo com Sucesso!</h3>
+              <p className="text-slate-600 text-sm mb-4 leading-relaxed">
+                Seu PDF foi baixado e os dados desta escala foram salvos no seu dispositivo.
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-left mb-6">
+                <p className="text-amber-800 text-xs font-semibold flex gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  Você pode voltar aqui em até 7 dias para editar e gerar um novo PDF sem precisar preencher tudo de novo!
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors"
+              >
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stepper Progress Bar */}
       <div className="mb-10 max-w-md mx-auto">
@@ -867,36 +889,17 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
           <p className="text-slate-600 text-sm mb-8 leading-relaxed">
             Sua escala para o mês de <strong className="text-slate-900 capitalize">{format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}</strong> foi estruturada com sucesso.
           </p>
-
-          <div className="flex flex-col gap-3 justify-center mt-6">
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button 
-                onClick={generatePDF}
-                className="px-6 py-4 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl shadow-md shadow-green-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
-              >
-                <FileDown className="w-5 h-5" /> Baixar PDF Formatado
-              </button>
-            </div>
-
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <button
-                onClick={handleSaveTemporary}
-                className="px-6 py-3 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-bold rounded-xl flex-1 max-w-[280px] transition-all cursor-pointer border border-amber-300"
-              >
-                Salvar Temporário e Revisar
-              </button>
-              <div 
-                className="relative p-2 -ml-2 cursor-pointer flex items-center justify-center bg-amber-50 hover:bg-amber-100 rounded-full transition-colors border border-amber-200"
-                onClick={() => alert('Esta função salva os dados da escala atual no seu navegador por até 7 dias para revisão posterior. Para recuperar, basta voltar ao passo 1 e clicar em "Continuar preenchimento".')}
-                title="Informação sobre Salvar Temporário"
-              >
-                <AlertCircle className="w-5 h-5 text-amber-600" />
-              </div>
-            </div>
+          <div className="flex flex-col items-center gap-3 w-full max-w-xs mx-auto">
+            <button 
+              onClick={generatePDF}
+              className="w-full px-6 py-4 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl shadow-md shadow-green-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <FileDown className="w-5 h-5" /> Baixar PDF Formatado
+            </button>
 
             <button
               onClick={() => setStep(1)}
-              className="w-full max-w-sm mx-auto px-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer border border-slate-200"
+              className="w-full px-6 py-4 bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer border border-slate-200"
             >
               Voltar à Página Inicial
             </button>
