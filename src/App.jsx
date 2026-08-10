@@ -7,7 +7,7 @@ import { UserManagementModal } from './components/UserManagementModal';
 
 function App() {
   const [currentUser, setCurrentUser] = useState(() => {
-    const saved = sessionStorage.getItem('ieasb_user');
+    const saved = localStorage.getItem('ieasb_user');
     return saved ? JSON.parse(saved) : null;
   });
 
@@ -16,12 +16,12 @@ function App() {
 
   const handleLoginSuccess = (userObj) => {
     setCurrentUser(userObj);
-    sessionStorage.setItem('ieasb_user', JSON.stringify(userObj));
+    localStorage.setItem('ieasb_user', JSON.stringify(userObj));
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
-    sessionStorage.removeItem('ieasb_user');
+    localStorage.removeItem('ieasb_user');
   };
 
   // Se não estiver logado, exibe primeiramente a tela de Login obrigatória

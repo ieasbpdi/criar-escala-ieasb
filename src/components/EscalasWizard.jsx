@@ -189,16 +189,21 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     const monthNameUpper = format(selectedMonth, 'MMMM', { locale: ptBR }).toUpperCase();
     const yearStr = selectedMonth.getFullYear();
     
-    // Tentar carregar a logo vertical centralizada no topo
-    const logoUrl = `${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - TEXTO - VERTICAL.svg`;
+    // Tentar carregar a logo centralizada no topo
+    const logoUrl = `${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - TEXTO2.svg`;
     const logoData = await getLogoDataUrl(logoUrl);
 
     let startY = 20;
 
     if (logoData) {
-      // Desenhar logo centralizada no topo (Largura: 26mm, Altura: 32mm)
-      doc.addImage(logoData, 'PNG', 105 - 13, 10, 26, 32);
-      startY = 48;
+      // Logo centralizada (Largura 50mm, Altura 16mm ajustada)
+      doc.addImage(logoData, 'PNG', 105 - 25, 10, 50, 16);
+      startY = 32;
+      doc.setTextColor(100, 100, 100);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text('Palmeira dos Índios', 105, startY, { align: 'center' });
+      startY += 10;
     } else {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
@@ -240,7 +245,8 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
       
-      const bannerText = `DIA ${dayNumStr} DE ${monthNameUpper} (${dayOfWeekStr}) – ${item.title.toUpperCase()} ÀS ${item.time}`;
+      const itemTitle = item.title === 'Outro' && item.customTitle ? item.customTitle.toUpperCase() : item.title.toUpperCase();
+      const bannerText = `DIA ${dayNumStr} DE ${monthNameUpper} (${dayOfWeekStr}) – ${itemTitle} ÀS ${item.time}`;
       doc.text(bannerText, 17, y + 5);
 
       y += 14; // Aumentado para dar folga em relação ao retângulo do dia
@@ -385,17 +391,16 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                 <ChevronLeft className="w-4 h-4" /> {selectedYear - 1}
               </button>
 
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="px-4 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm"
-              >
-                {Array.from({ length: 7 }, (_, i) => currentYearNum - 3 + i).map(year => (
-                  <option key={year} value={year}>
-                    Ano {year} {year === currentYearNum ? '(Atual)' : ''}
-                  </option>
-                ))}
-              </select>
+              <div className="w-48">
+                <CustomSelect
+                  value={selectedYear}
+                  onChange={(val) => setSelectedYear(Number(val))}
+                  options={Array.from({ length: 7 }, (_, i) => currentYearNum - 3 + i).map(year => ({
+                    value: year,
+                    label: `Ano ${year} ${year === currentYearNum ? '(Atual)' : ''}`
+                  }))}
+                />
+              </div>
 
               <button
                 onClick={() => setSelectedYear(prev => prev + 1)}
@@ -477,7 +482,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                       </span>
                       <div>
                         <h3 className="font-bold text-slate-900 capitalize text-base">
-                          {dayName} — {item.title}
+                          {dayName} — {item.title === 'Outro' && item.customTitle ? item.customTitle : item.title}
                         </h3>
                         <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
                           <Clock className="w-3.5 h-3.5 text-blue-600" /> Horário: {item.time}
@@ -506,8 +511,17 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                           <CustomSelect 
                             value={item.title}
                             onChange={(val) => handleUpdateItem(key, 'title', val)}
-                            options={availableTypes}
+                            options={[...availableTypes, 'Outro']}
                           />
+                          {item.title === 'Outro' && (
+                            <input
+                              type="text"
+                              placeholder="Digite o tipo de culto temporário..."
+                              value={item.customTitle || ''}
+                              onChange={(e) => handleUpdateItem(key, 'customTitle', e.target.value)}
+                              className="mt-1 w-full px-4 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          )}
                         </div>
                       )}
 
@@ -606,6 +620,18 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
               className="px-6 py-3 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl shadow-md shadow-green-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <FileDown className="w-5 h-5" /> Baixar PDF Formatado
+            </button>
+            <button
+              onClick={() => setStep(2)}
+              className="mt-3 w-full max-w-sm mx-auto px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer border border-slate-300"
+            >
+              Revisar Dados (Salvar Temporário)
+            </button>
+            <button
+              onClick={() => setStep(1)}
+              className="mt-3 w-full max-w-sm mx-auto px-6 py-4 bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer border border-slate-200"
+            >
+              Voltar à Página Inicial
             </button>
           </div>
         </div>
