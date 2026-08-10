@@ -176,10 +176,11 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
           birthday: birthdayInfo
         };
       } else if (dayOfWeek === 2) { // Terça
+        const isLastTuesday = days.filter(d => getDay(d) === 2).pop().getDate() === day.getDate();
         initialData[`${dateStr}_noite`] = {
           isEbd: false,
           dateStr,
-          title: holidayInfo || 'Culto de doutrina',
+          title: holidayInfo || (isLastTuesday ? 'Culto de Santa Ceia' : 'Culto de doutrina'),
           time: '19H00',
           dirigente: getDefault(2, 'noite', 'dirigente'),
           louvor: getDefault(2, 'noite', 'louvor'),
@@ -285,21 +286,21 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     let startY = 20;
 
     if (logoData) {
-      // Calcular altura proporcional baseada na largura de 50mm
-      const targetWidth = 50;
+      // Calcular altura proporcional baseada na largura de 70mm
+      const targetWidth = 70;
       const targetHeight = (targetWidth * logoData.height) / logoData.width;
       doc.addImage(logoData.url, 'PNG', 105 - (targetWidth / 2), 10, targetWidth, targetHeight);
       startY = 10 + targetHeight + 5;
       doc.setTextColor(100, 100, 100);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
+      doc.setFontSize(11);
       doc.text('Palmeira dos Índios', 105, startY, { align: 'center' });
-      startY += 10;
+      startY += 12;
     } else {
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text('Igreja Evangelica Assembleia dos Santos no Brasil – Palmeira dos índios', 105, startY, { align: 'center' });
-      startY += 6;
+      doc.setFontSize(11);
+      doc.text('Igreja Evangélica Assembleia dos Santos no Brasil – Palmeira dos índios', 105, startY, { align: 'center' });
+      startY += 8;
     }
 
     // Título Principal
@@ -319,7 +320,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       const dayNumStr = format(dateObj, 'dd');
       const dayOfWeekStr = format(dateObj, 'EEEE', { locale: ptBR }).toUpperCase();
 
-      const itemHeight = item.isEbd ? 20 : 35;
+      const itemHeight = item.isEbd ? 25 : 45;
       if (y + itemHeight > pageHeight) {
         doc.addPage();
         y = 20;
@@ -340,25 +341,25 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       const bannerText = `DIA ${dayNumStr} DE ${monthNameUpper} (${dayOfWeekStr}) – ${itemTitle} ÀS ${item.time}`;
       doc.text(bannerText, 17, y + 5);
 
-      y += 14; // Aumentado para dar folga em relação ao retângulo do dia
+      y += 16; // Aumentado para dar mais folga vertical
 
       doc.setTextColor(0, 0, 0);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
+      doc.setFontSize(10);
 
       // Usando marcador limpo e seguro sem caractere corrompido
       if (item.isEbd) {
         doc.text(`>  PROFESSOR: ${(item.professor || '').toUpperCase()}`, 20, y);
-        y += 7;
+        y += 12;
       } else {
         doc.text(`>  DIRIGENTE: ${(item.dirigente || '').toUpperCase()}`, 20, y);
-        y += 5;
+        y += 6;
         doc.text(`>  LOUVOR: ${(item.louvor || '').toUpperCase()}`, 20, y);
-        y += 5;
+        y += 6;
         doc.text(`>  PORTA: ${(item.porta || '').toUpperCase()}`, 20, y);
-        y += 5;
+        y += 6;
         doc.text(`>  ÁGUA: ${(item.agua || '').toUpperCase()}`, 20, y);
-        y += 7;
+        y += 12;
       }
     });
 
@@ -698,7 +699,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                     </label>
                   </div>
 
-                  {item.enabled && (
+                  {item.enabled ? (
                     <div className="space-y-4">
                       {/* Select Tipo de Culto Customizado */}
                       {!item.isEbd && (
@@ -710,13 +711,21 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                             options={[...availableTypes, 'Outro']}
                           />
                           {item.title === 'Outro' && (
-                            <input
-                              type="text"
-                              placeholder="Digite o tipo de culto temporário..."
-                              value={item.customTitle || ''}
-                              onChange={(e) => handleUpdateItem(key, 'customTitle', e.target.value)}
-                              className="mt-1 w-full px-4 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+                            <div className="flex flex-col sm:flex-row gap-3 mt-1">
+                              <input
+                                type="text"
+                                placeholder="Nome do evento..."
+                                value={item.customTitle || ''}
+                                onChange={(e) => handleUpdateItem(key, 'customTitle', e.target.value)}
+                                className="w-full px-4 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                              <input
+                                type="time"
+                                value={item.time.replace('H', ':')}
+                                onChange={(e) => handleUpdateItem(key, 'time', e.target.value.replace(':', 'H'))}
+                                className="w-full sm:w-32 px-4 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
                           )}
                         </div>
                       )}
@@ -738,6 +747,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                             onChange={(val) => handleUpdateItem(key, 'professor', val)}
                             options={sortedMemberList}
                             placeholder="Selecione..."
+                            showTempAdd={true}
                           />
                         </div>
                       ) : (
@@ -757,6 +767,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                               value={item.dirigente || ''}
                               onChange={(val) => handleUpdateItem(key, 'dirigente', val)}
                               options={sortedMemberList}
+                              showTempAdd={true}
                             />
                           </div>
 
@@ -774,6 +785,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                               value={item.louvor || ''}
                               onChange={(val) => handleUpdateItem(key, 'louvor', val)}
                               options={['TODOS OS DEPARTAMENTOS', ...sortedMemberList]}
+                              showTempAdd={true}
                             />
                           </div>
 
@@ -791,6 +803,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                               value={item.porta || ''}
                               onChange={(val) => handleUpdateItem(key, 'porta', val)}
                               options={sortedMemberList}
+                              showTempAdd={true}
                             />
                           </div>
 
@@ -808,11 +821,32 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                               value={item.agua || ''}
                               onChange={(val) => handleUpdateItem(key, 'agua', val)}
                               options={sortedMemberList}
+                              showTempAdd={true}
                             />
                           </div>
 
                         </div>
                       )}
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-center sm:text-left">
+                      <button
+                        onClick={() => {
+                          setCultosData(prev => ({
+                            ...prev,
+                            [key]: { 
+                              ...prev[key], 
+                              enabled: true, 
+                              title: 'Outro', 
+                              customTitle: '',
+                              isEbd: false 
+                            }
+                          }));
+                        }}
+                        className="px-4 py-2 bg-slate-100 text-blue-700 font-bold text-xs rounded-xl hover:bg-blue-50 transition-colors border border-slate-200 shadow-sm"
+                      >
+                        + Adicionar outro evento neste lugar
+                      </button>
                     </div>
                   )}
                 </div>
@@ -851,12 +885,12 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
               >
                 Salvar Temporário e Revisar
               </button>
-              <div className="relative group cursor-help">
-                <AlertCircle className="w-5 h-5 text-amber-500" />
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-64 bg-slate-800 text-white text-xs p-3 rounded-xl shadow-xl z-50">
-                  Esta função salva os dados da escala atual no seu navegador por até 7 dias para revisão posterior. Para recuperar, basta voltar ao passo 1 e clicar em "Continuar preenchimento".
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
-                </div>
+              <div 
+                className="relative p-2 -ml-2 cursor-pointer flex items-center justify-center bg-amber-50 hover:bg-amber-100 rounded-full transition-colors border border-amber-200"
+                onClick={() => alert('Esta função salva os dados da escala atual no seu navegador por até 7 dias para revisão posterior. Para recuperar, basta voltar ao passo 1 e clicar em "Continuar preenchimento".')}
+                title="Informação sobre Salvar Temporário"
+              >
+                <AlertCircle className="w-5 h-5 text-amber-600" />
               </div>
             </div>
 
