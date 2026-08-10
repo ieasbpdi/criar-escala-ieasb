@@ -39,25 +39,3 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
-
-      # Upload para deployment do GitHub Pages via Actions
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./dist
-
-  deploy-pages:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    needs: build-and-deploy
-    runs-on: ubuntu-latest
-    name: Deploy
-    env:
-      NODE_OPTIONS: "--use-system-ca"
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-        env:
-          NODE_OPTIONS: "--use-system-ca"
