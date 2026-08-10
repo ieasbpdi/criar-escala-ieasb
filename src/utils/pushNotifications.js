@@ -26,7 +26,9 @@ export async function initPushNotifications() {
   }
 
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js');
+    // Usar a base URL correta para o GitHub Pages
+    const swUrl = import.meta.env.BASE_URL + 'sw.js';
+    const registration = await navigator.serviceWorker.register(swUrl);
     console.log('Service Worker registrado:', registration);
 
     const permission = await Notification.requestPermission();
