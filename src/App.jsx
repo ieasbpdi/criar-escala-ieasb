@@ -17,16 +17,11 @@ function App() {
   const [isUserManagementModalOpen, setIsUserManagementModalOpen] = useState(false);
   const [isBirthdaysModalOpen, setIsBirthdaysModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (currentUser) {
-      // Inicia o processo de push notification assim que logado
-      initPushNotifications();
-    }
-  }, [currentUser]);
-
   const handleLoginSuccess = (userObj) => {
     setCurrentUser(userObj);
     localStorage.setItem('ieasb_user', JSON.stringify(userObj));
+    // Pede permissão para push notifications apenas logo após o clique de fazer login (User Gesture)
+    initPushNotifications();
   };
 
   const handleLogout = () => {
