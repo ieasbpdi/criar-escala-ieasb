@@ -317,8 +317,22 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     if (!silent) {
       setSaveDraftModal(true);
     } else {
-      // Salva silencioso sem autor se for apenas fallback, mas como é na nuvem, melhor não fazer silent na nuvem sem autor.
-      // O silent agora é substituído pelo modal.
+      const saveToSupabaseSilent = async () => {
+        const key = `${selectedMonth.getFullYear()}-${selectedMonth.getMonth()}`;
+        const payload = {
+          mes_ano: key,
+          nome_rascunho: `Salvo Automaticamente (Download PDF)`,
+          autor_rascunho: 'Sistema (Auto-save)',
+          dados: cultosData
+        };
+        try {
+          await supabase.from('escalas_salvas').insert([payload]);
+          setRefreshKey(prev => prev + 1);
+        } catch (err) {
+          console.log('Erro ao auto-salvar:', err);
+        }
+      };
+      saveToSupabaseSilent();
     }
   };
 
