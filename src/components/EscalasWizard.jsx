@@ -26,6 +26,7 @@ const ALL_CULTO_TYPES = [
 export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
   const [step, setStep] = useState(1);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Rolagem para o topo ao trocar de passo
   useEffect(() => {
@@ -268,6 +269,19 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       img.onerror = () => resolve(null);
       img.src = src;
     });
+  };
+
+  const handleSaveTemporary = (silent = false) => {
+    const key = `escalaTempData_${selectedMonth.getFullYear()}_${selectedMonth.getMonth()}`;
+    const payload = {
+      expiry: new Date().getTime() + (7 * 24 * 60 * 60 * 1000),
+      data: cultosData
+    };
+    localStorage.setItem(key, JSON.stringify(payload));
+    if (!silent) {
+      alert('Os dados desta escala foram salvos no seu navegador e ficarão disponíveis pelos próximos 7 dias.');
+      setStep(2);
+    }
   };
 
   const generatePDF = async () => {
@@ -625,12 +639,25 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                       const savedData = getTemporaryData(month.getFullYear(), month.getMonth());
                       if (savedData) {
                         return (
-                          <button
-                            onClick={(e) => handleContinueSaved(month, savedData, e)}
-                            className="mt-3 w-full py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold rounded-lg transition-colors border border-amber-300"
-                          >
-                            Continuar preenchimento
-                          </button>
+                          <div className="mt-3 flex gap-2 w-full">
+                            <button
+                              onClick={(e) => handleContinueSaved(month, savedData, e)}
+                              className="flex-1 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold rounded-lg transition-colors border border-amber-300"
+                            >
+                              Continuar preenchimento
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                localStorage.removeItem(`escalaTempData_${month.getFullYear()}_${month.getMonth()}`);
+                                setRefreshKey(prev => prev + 1);
+                              }}
+                              className="px-2 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg transition-colors border border-red-300 flex items-center justify-center"
+                              title="Apagar rascunho"
+                            >
+                              X
+                            </button>
+                          </div>
                         );
                       }
                       return null;
@@ -763,7 +790,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                       </span>
                       <div>
                         <h3 className="font-bold text-slate-900 capitalize text-base">
-                          {dayName} — {item.title === 'Outro' && item.customTitle ? item.customTitle : item.title}
+                          {dayName}
                         </h3>
                         <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
                           <Clock className="w-3.5 h-3.5 text-blue-600" /> Horário: {item.time}
