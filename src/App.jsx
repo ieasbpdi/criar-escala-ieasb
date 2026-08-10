@@ -60,6 +60,7 @@ function App() {
       <BirthdaysModal
         isOpen={isBirthdaysModalOpen}
         onClose={() => setIsBirthdaysModalOpen(false)}
+        currentUser={currentUser}
       />
 
       <Footer />

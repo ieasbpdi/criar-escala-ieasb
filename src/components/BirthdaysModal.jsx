@@ -1,15 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { X, Gift, Trash2, Search, Calendar as CalendarIcon } from 'lucide-react';
 import { supabase } from '../utils/supabase';
+import { CustomSelect } from './CustomSelect';
 
-export function BirthdaysModal({ isOpen, onClose }) {
+export function BirthdaysModal({ isOpen, onClose, currentUser }) {
   const [birthdays, setBirthdays] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
   
   const [selectedMember, setSelectedMember] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDay, setSelectedDay] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  const daysOptions = Array.from({length: 31}, (_, i) => ({ value: i + 1, label: String(i + 1).padStart(2, '0') }));
+  const monthsOptions = [
+    { value: 1, label: 'Janeiro' }, { value: 2, label: 'Fevereiro' },
+    { value: 3, label: 'Março' }, { value: 4, label: 'Abril' },
+    { value: 5, label: 'Maio' }, { value: 6, label: 'Junho' },
+    { value: 7, label: 'Julho' }, { value: 8, label: 'Agosto' },
+    { value: 9, label: 'Setembro' }, { value: 10, label: 'Outubro' },
+    { value: 11, label: 'Novembro' }, { value: 12, label: 'Dezembro' }
+  ];
 
   useEffect(() => {
     if (isOpen) {
@@ -45,25 +57,29 @@ export function BirthdaysModal({ isOpen, onClose }) {
 
   const handleAddBirthday = async (e) => {
     e.preventDefault();
-    if (!selectedMember || !selectedDate) return;
+    if (!selectedMember || !selectedDay || !selectedMonth) {
+      alert('Por favor, preencha todos os campos.');
+      return;
+    }
 
-    const dateObj = new Date(selectedDate + 'T12:00:00');
-    const dia = dateObj.getDate();
-    const mes = dateObj.getMonth() + 1; // 1-12
+    // Criamos uma data fictícia de nascimento apenas para gravar corretamente na coluna Date,
+    // pois o que realmente importa pro sistema é o dia e mês.
+    const fakeYear = 2000;
+    const dateStr = `${fakeYear}-${String(selectedMonth).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
 
     try {
-      // Upsert: atualiza se o membro já tiver aniversário registrado
       const { error } = await supabase.from('aniversarios').upsert({
         membro_nome: selectedMember,
-        data_nascimento: selectedDate,
-        dia,
-        mes
+        data_nascimento: dateStr,
+        dia: selectedDay,
+        mes: selectedMonth
       }, { onConflict: 'membro_nome' });
 
       if (error) throw error;
       
       setSelectedMember('');
-      setSelectedDate('');
+      setSelectedDay('');
+      setSelectedMonth('');
       loadBirthdays();
     } catch (err) {
       console.log('Erro ao salvar aniversário:', err);
@@ -88,8 +104,8 @@ export function BirthdaysModal({ isOpen, onClose }) {
   );
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 md:p-8 z-50">
+      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[80vh]">
         
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-100">
@@ -113,45 +129,53 @@ export function BirthdaysModal({ isOpen, onClose }) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           
-          {/* Adicionar */}
-          <form onSubmit={handleAddBirthday} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
-            <h3 className="text-sm font-bold text-slate-700">Registrar Novo Aniversário</h3>
-            <div className="space-y-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600">Membro</label>
-                <select
-                  value={selectedMember}
-                  onChange={(e) => setSelectedMember(e.target.value)}
-                  className="w-full px-4 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-fuchsia-500 outline-none"
-                  required
-                >
-                  <option value="">Selecione o membro...</option>
-                  {members.map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600">Data de Nascimento</label>
-                <div className="relative">
-                  <CalendarIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-fuchsia-500 outline-none"
-                    required
+          {/* Adicionar (Apenas para Admins) */}
+          {currentUser?.is_admin && (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+              <h3 className="text-sm font-bold text-slate-700">Registrar Novo Aniversário</h3>
+              <div className="space-y-4">
+                
+                <div className="flex flex-col gap-1.5 relative z-20">
+                  <label className="text-xs font-semibold text-slate-600">Membro</label>
+                  <CustomSelect
+                    value={selectedMember}
+                    onChange={setSelectedMember}
+                    options={members}
+                    placeholder="Selecione o membro..."
                   />
                 </div>
+
+                <div className="flex gap-4 relative z-10">
+                  <div className="flex flex-col gap-1.5 flex-1">
+                    <label className="text-xs font-semibold text-slate-600">Dia</label>
+                    <CustomSelect
+                      value={selectedDay}
+                      onChange={setSelectedDay}
+                      options={daysOptions}
+                      placeholder="Dia"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5 flex-[2]">
+                    <label className="text-xs font-semibold text-slate-600">Mês</label>
+                    <CustomSelect
+                      value={selectedMonth}
+                      onChange={setSelectedMonth}
+                      options={monthsOptions}
+                      placeholder="Mês"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="button"
+                  onClick={handleAddBirthday}
+                  className="w-full py-2.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-sm rounded-xl transition-colors mt-2"
+                >
+                  Salvar Aniversário
+                </button>
               </div>
-              <button 
-                type="submit"
-                className="w-full py-2.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-sm rounded-xl transition-colors"
-              >
-                Salvar Aniversário
-              </button>
             </div>
-          </form>
+          )}
 
           {/* Lista */}
           <div className="space-y-3">
@@ -191,13 +215,15 @@ export function BirthdaysModal({ isOpen, onClose }) {
                         Faz aniversário dia {String(b.dia).padStart(2, '0')}/{String(b.mes).padStart(2, '0')}
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleRemoveBirthday(b.membro_nome)}
-                      className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
-                      title="Remover"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {currentUser?.is_admin && (
+                      <button
+                        onClick={() => handleRemoveBirthday(b.membro_nome)}
+                        className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                        title="Remover"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 ))
               )}
