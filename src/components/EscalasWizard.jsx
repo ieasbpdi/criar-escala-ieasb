@@ -504,19 +504,20 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     doc.setFontSize(11);
     
     // Lado esquerdo (Alinhado à direita)
-    const leftX = 101; // Ajustado para ficar mais perto
+    const leftX = 101;
     let leftY = footerY;
-    const lineHeight = 6.5; // Aumentado o vão entre as linhas
+    const lineHeight = 5; // Vão normal para os blocos inferiores
+    const gapBetweenSections = 8; // Vão maior apenas após a primeira linha
     
-    doc.text('Pastor José Valter da Silva', leftX, leftY, { align: 'right' }); leftY += lineHeight;
+    doc.text('Pastor José Valter da Silva', leftX, leftY, { align: 'right' }); leftY += gapBetweenSections;
     doc.text('Secretários: Primeiro(a) secretário(a)', leftX, leftY, { align: 'right' }); leftY += lineHeight;
     doc.text('Vanessa Soares de Araújo; segundo(a)', leftX, leftY, { align: 'right' }); leftY += lineHeight;
     doc.text('secretário(a) José Yago Silva Góes', leftX, leftY, { align: 'right' });
     
     // Lado direito (Alinhado à esquerda)
-    const rightX = 106; // Ajustado para ficar mais perto
+    const rightX = 106;
     let rightY = footerY;
-    doc.text('CNPJ: 08.936.324/0001-48', rightX, rightY, { align: 'left' }); rightY += lineHeight;
+    doc.text('CNPJ: 08.936.324/0001-48', rightX, rightY, { align: 'left' }); rightY += gapBetweenSections;
     doc.text('Loteamento Bosque das Bromélias, Quadra', rightX, rightY, { align: 'left' }); rightY += lineHeight;
     doc.text('C, Nº 8, Palmeira de Fora - Palmeira dos', rightX, rightY, { align: 'left' }); rightY += lineHeight;
     doc.text('Índios, Alagoas', rightX, rightY, { align: 'left' });
