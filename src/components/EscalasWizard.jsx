@@ -26,9 +26,14 @@ const ALL_CULTO_TYPES = [
 export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
   const [step, setStep] = useState(1);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [draftActionModal, setDraftActionModal] = useState(null);
+  const [draftActionModal, setDraftActionModal] = useState(null); // Agora recebe o rascunho específico
+  const [draftsListModal, setDraftsListModal] = useState(null); // Recebe o month para listar rascunhos
+  const [saveDraftModal, setSaveDraftModal] = useState(false); // Modal para pegar nome do autor
+  const [draftAuthor, setDraftAuthor] = useState('');
   const [confirmDeleteDraft, setConfirmDeleteDraft] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [cloudDrafts, setCloudDrafts] = useState({}); // { '2026-0': [{...}], ... }
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // Fechar modais com Escape
   useEffect(() => {
@@ -37,11 +42,13 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
         if (showSuccessModal) setShowSuccessModal(false);
         if (draftActionModal) setDraftActionModal(null);
         if (confirmDeleteDraft) setConfirmDeleteDraft(null);
+        if (draftsListModal) setDraftsListModal(null);
+        if (saveDraftModal) setSaveDraftModal(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSuccessModal, draftActionModal, confirmDeleteDraft]);
+  }, [showSuccessModal, draftActionModal, confirmDeleteDraft, draftsListModal, saveDraftModal]);
 
   // Rolagem para o topo ao trocar de passo
   useEffect(() => {
@@ -56,6 +63,26 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
 
   // Meses do ano selecionado
   const yearMonths = Array.from({ length: 12 }, (_, i) => new Date(selectedYear, i, 1));
+
+  // Carregar rascunhos da Nuvem
+  useEffect(() => {
+    async function loadDrafts() {
+      try {
+        const { data, error } = await supabase.from('escalas_salvas').select('*');
+        if (!error && data) {
+          const grouped = {};
+          data.forEach(d => {
+            if (!grouped[d.mes_ano]) grouped[d.mes_ano] = [];
+            grouped[d.mes_ano].push(d);
+          });
+          setCloudDrafts(grouped);
+        }
+      } catch (err) {
+        console.log('Erro ao carregar rascunhos:', err);
+      }
+    }
+    loadDrafts();
+  }, [refreshKey]);
 
   // Carregar membros do Supabase
   useEffect(() => {
@@ -287,15 +314,36 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
   };
 
   const handleSaveTemporary = (silent = false) => {
-    const key = `escalaTempData_${selectedMonth.getFullYear()}_${selectedMonth.getMonth()}`;
-    const payload = {
-      expiry: new Date().getTime() + (7 * 24 * 60 * 60 * 1000),
-      data: cultosData
-    };
-    localStorage.setItem(key, JSON.stringify(payload));
     if (!silent) {
-      alert('Os dados desta escala foram salvos no seu navegador e ficarão disponíveis pelos próximos 7 dias.');
-      setStep(2);
+      setSaveDraftModal(true);
+    } else {
+      // Salva silencioso sem autor se for apenas fallback, mas como é na nuvem, melhor não fazer silent na nuvem sem autor.
+      // O silent agora é substituído pelo modal.
+    }
+  };
+
+  const confirmSaveDraft = async () => {
+    if (!draftAuthor.trim()) return alert("Por favor, informe seu nome.");
+    setIsSavingDraft(true);
+    const key = `${selectedMonth.getFullYear()}-${selectedMonth.getMonth()}`;
+    const payload = {
+      mes_ano: key,
+      nome_rascunho: `Rascunho de ${draftAuthor}`, // Fallback para a coluna nome_rascunho
+      autor_rascunho: draftAuthor,
+      dados: cultosData
+    };
+    try {
+      await supabase.from('escalas_salvas').insert([payload]);
+      setRefreshKey(prev => prev + 1);
+      setSaveDraftModal(false);
+      setDraftAuthor('');
+      alert('Os dados desta escala foram salvos na nuvem e ficarão disponíveis para você e sua equipe.');
+      setStep(2); // Vai para step 2, ou poderia ir para step 1. Como a tela 3 já tem "Voltar", vamos manter no step 3 e apenas fechar modal? O original ia pra setStep(2) pra editar, não faz muito sentido. Vamos apenas exibir a msg de sucesso e continuar no step 3 (já estamos nele, ou no 1). 
+    } catch (err) {
+      console.log('Erro ao salvar:', err);
+      alert('Ocorreu um erro ao salvar o rascunho.');
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -456,19 +504,21 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     doc.setFontSize(11);
     
     // Lado esquerdo (Alinhado à direita)
-    const leftX = 100;
+    const leftX = 101; // Ajustado para ficar mais perto
     let leftY = footerY;
-    doc.text('Pastor José Valter da Silva', leftX, leftY, { align: 'right' }); leftY += 5;
-    doc.text('Secretários: Primeiro(a) secretário(a)', leftX, leftY, { align: 'right' }); leftY += 5;
-    doc.text('Vanessa Soares de Araújo; segundo(a)', leftX, leftY, { align: 'right' }); leftY += 5;
+    const lineHeight = 6.5; // Aumentado o vão entre as linhas
+    
+    doc.text('Pastor José Valter da Silva', leftX, leftY, { align: 'right' }); leftY += lineHeight;
+    doc.text('Secretários: Primeiro(a) secretário(a)', leftX, leftY, { align: 'right' }); leftY += lineHeight;
+    doc.text('Vanessa Soares de Araújo; segundo(a)', leftX, leftY, { align: 'right' }); leftY += lineHeight;
     doc.text('secretário(a) José Yago Silva Góes', leftX, leftY, { align: 'right' });
     
     // Lado direito (Alinhado à esquerda)
-    const rightX = 110;
+    const rightX = 106; // Ajustado para ficar mais perto
     let rightY = footerY;
-    doc.text('CNPJ: 08.936.324/0001-48', rightX, rightY, { align: 'left' }); rightY += 5;
-    doc.text('Loteamento Bosque das Bromélias, Quadra', rightX, rightY, { align: 'left' }); rightY += 5;
-    doc.text('C, Nº 8, Palmeira de Fora - Palmeira dos', rightX, rightY, { align: 'left' }); rightY += 5;
+    doc.text('CNPJ: 08.936.324/0001-48', rightX, rightY, { align: 'left' }); rightY += lineHeight;
+    doc.text('Loteamento Bosque das Bromélias, Quadra', rightX, rightY, { align: 'left' }); rightY += lineHeight;
+    doc.text('C, Nº 8, Palmeira de Fora - Palmeira dos', rightX, rightY, { align: 'left' }); rightY += lineHeight;
     doc.text('Índios, Alagoas', rightX, rightY, { align: 'left' });
 
     // Paginação
@@ -566,6 +616,45 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
         </div>
       )}
 
+      {/* Drafts List Modal */}
+      {draftsListModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative text-center">
+            <button 
+              type="button"
+              onClick={() => setDraftsListModal(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 cursor-pointer rounded-full hover:bg-slate-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <FileEdit className="w-8 h-8 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Rascunhos Salvos</h3>
+            <p className="text-slate-600 mb-6 text-sm">
+              Selecione o rascunho de {format(draftsListModal.month, 'MMMM yyyy', { locale: ptBR })} que deseja acessar:
+            </p>
+            <div className="flex flex-col gap-3 max-h-60 overflow-y-auto pr-2">
+              {draftsListModal.drafts.map((draft, idx) => (
+                <button
+                  key={draft.id || idx}
+                  type="button"
+                  onClick={() => {
+                    setDraftsListModal(null);
+                    setDraftActionModal({ month: draftsListModal.month, draft });
+                  }}
+                  className="w-full py-3 px-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-slate-700 font-bold rounded-xl transition-colors cursor-pointer text-left flex justify-between items-center"
+                >
+                  <span className="truncate flex-1">Rascunho {idx + 1}</span>
+                  <span className="text-xs text-slate-500 font-normal">por {draft.autor_rascunho || 'Desconhecido'}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Draft Action Modal */}
       {draftActionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative text-center">
@@ -579,15 +668,15 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <FileEdit className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Escala Salva</h3>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Gerenciar Rascunho</h3>
             <p className="text-slate-600 mb-6 text-sm">
-              Você tem um rascunho salvo para {format(draftActionModal.month, 'MMMM yyyy', { locale: ptBR })}. O que deseja fazer?
+              Criado por <strong>{draftActionModal.draft.autor_rascunho || 'Desconhecido'}</strong>. O que deseja fazer com esta escala?
             </p>
             <div className="flex flex-col gap-3">
               <button
                 type="button"
                 onClick={(e) => {
-                  handleContinueSaved(draftActionModal.month, draftActionModal.savedData, e);
+                  handleContinueSaved(draftActionModal.month, draftActionModal.draft.dados, e);
                   setDraftActionModal(null);
                 }}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors cursor-pointer"
@@ -597,9 +686,9 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
               <button
                 type="button"
                 onClick={() => {
-                  const m = draftActionModal.month;
+                  const d = draftActionModal.draft;
                   setDraftActionModal(null);
-                  setConfirmDeleteDraft({ month: m });
+                  setConfirmDeleteDraft({ month: draftActionModal.month, draftId: d.id, autor: d.autor_rascunho });
                 }}
                 className="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl transition-colors cursor-pointer"
               >
@@ -610,6 +699,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
         </div>
       )}
 
+      {/* Confirm Delete Modal */}
       {confirmDeleteDraft && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative text-center">
@@ -625,19 +715,23 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
             </div>
             <h3 className="text-xl font-bold text-slate-900 mb-2">Apagar Rascunho?</h3>
             <p className="text-slate-600 mb-6 text-sm">
-              Tem certeza que deseja apagar a escala salva de {format(confirmDeleteDraft.month, 'MMMM yyyy', { locale: ptBR })}? Esta ação não pode ser desfeita.
+              Tem certeza que deseja apagar o rascunho de <strong>{confirmDeleteDraft.autor || 'Desconhecido'}</strong>? Esta ação removerá o rascunho para todos os usuários.
             </p>
             <div className="flex flex-col gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  localStorage.removeItem(`escalaTempData_${confirmDeleteDraft.month.getFullYear()}_${confirmDeleteDraft.month.getMonth()}`);
-                  setRefreshKey(prev => prev + 1);
-                  setConfirmDeleteDraft(null);
+                onClick={async () => {
+                  try {
+                    await supabase.from('escalas_salvas').delete().eq('id', confirmDeleteDraft.draftId);
+                    setRefreshKey(prev => prev + 1);
+                    setConfirmDeleteDraft(null);
+                  } catch (err) {
+                    alert('Erro ao apagar o rascunho na nuvem.');
+                  }
                 }}
                 className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors cursor-pointer"
               >
-                Sim, Apagar
+                Sim, Apagar Definitivamente
               </button>
               <button
                 type="button"
@@ -645,6 +739,45 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                 className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors cursor-pointer"
               >
                 Não, Voltar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save Draft Modal */}
+      {saveDraftModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative text-center">
+            <button 
+              type="button"
+              onClick={() => setSaveDraftModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 cursor-pointer rounded-full hover:bg-slate-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 className="w-8 h-8 text-green-600" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Salvar Rascunho na Nuvem</h3>
+            <p className="text-slate-600 mb-6 text-sm">
+              Informe seu nome para que sua equipe saiba quem criou este rascunho.
+            </p>
+            <input 
+              type="text" 
+              value={draftAuthor} 
+              onChange={e => setDraftAuthor(e.target.value)} 
+              placeholder="Ex: João Silva"
+              className="w-full mb-6 p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow text-center"
+            />
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                disabled={isSavingDraft || !draftAuthor.trim()}
+                onClick={confirmSaveDraft}
+                className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                {isSavingDraft ? 'Salvando...' : 'Salvar e Continuar'}
               </button>
             </div>
           </div>
@@ -755,14 +888,15 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                     )}
                     
                     {(() => {
-                      const savedData = getTemporaryData(month.getFullYear(), month.getMonth());
-                      if (savedData) {
+                      const monthKey = `${month.getFullYear()}-${month.getMonth()}`;
+                      const savedDrafts = cloudDrafts[monthKey];
+                      if (savedDrafts && savedDrafts.length > 0) {
                         return (
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); setDraftActionModal({month, savedData}); }}
+                            onClick={(e) => { e.stopPropagation(); setDraftsListModal({ month, drafts: savedDrafts }); }}
                             className="absolute top-2 right-2 p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors cursor-pointer"
-                            title="Opções do Rascunho"
+                            title="Ver rascunhos salvos"
                           >
                             <FileEdit className="w-5 h-5" />
                           </button>
