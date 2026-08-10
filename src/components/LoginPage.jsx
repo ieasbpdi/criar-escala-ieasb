@@ -97,9 +97,9 @@ export function LoginPage({ onLoginSuccess }) {
         {/* Header / Brand */}
         <div className="text-center space-y-3">
           <img 
-            src={`${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - MONO.svg`} 
+            src={`${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - TEXTO - VERTICAL2.svg`} 
             alt="IEASB" 
-            className="h-16 w-auto mx-auto object-contain"
+            className="h-24 w-auto mx-auto object-contain"
           />
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Criar Escala</h2>
           <p className="text-xs text-slate-500 font-medium">
