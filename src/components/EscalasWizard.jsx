@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, FileDown, CheckCircle2, AlertCircle, Clock, UserCheck, Music, DoorClosed, Droplets, BookOpen, ChevronLeft, ChevronRight, Gift, FileEdit, Trash2, Edit3, X } from 'lucide-react';
+import { Calendar as CalendarIcon, FileDown, CheckCircle2, AlertCircle, Clock, UserCheck, Music, DoorClosed, Droplets, BookOpen, ChevronLeft, ChevronRight, Gift, FileEdit, Trash2, Edit3, X, Share2 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -34,6 +34,8 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [cloudDrafts, setCloudDrafts] = useState({}); // { '2026-0': [{...}], ... }
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [generatedPdfBlob, setGeneratedPdfBlob] = useState(null);
+  const [generatedPdfName, setGeneratedPdfName] = useState('');
 
   // Fechar modais com Escape
   useEffect(() => {
@@ -521,7 +523,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     const leftX = 101;
     let leftY = footerY;
     const lineHeight = 5; // Vão normal para os blocos inferiores
-    const gapBetweenSections = 8; // Vão maior apenas após a primeira linha
+    const gapBetweenSections = 6; // Vão maior apenas após a primeira linha
     
     doc.text('Pastor José Valter da Silva', leftX, leftY, { align: 'right' }); leftY += gapBetweenSections;
     doc.text('Secretários: Primeiro(a) secretário(a)', leftX, leftY, { align: 'right' }); leftY += lineHeight;
@@ -547,6 +549,10 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
 
     const fileName = `ESCALA DE ${monthNameUpper} ${yearStr} - IEASB.pdf`;
     doc.save(fileName);
+    
+    // Salva o blob na memória para o botão de compartilhamento
+    setGeneratedPdfBlob(doc.output('blob'));
+    setGeneratedPdfName(fileName);
     
     // Salva automaticamente e mostra o modal
     handleSaveTemporary(true);
@@ -619,6 +625,36 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                   Você pode voltar aqui em até 7 dias para editar e gerar um novo PDF sem precisar preencher tudo de novo!
                 </p>
               </div>
+              
+              {generatedPdfBlob && (
+                <button 
+                  type="button"
+                  onClick={async () => {
+                    if (navigator.share && navigator.canShare) {
+                      try {
+                        const file = new File([generatedPdfBlob], generatedPdfName, { type: 'application/pdf' });
+                        if (navigator.canShare({ files: [file] })) {
+                          await navigator.share({
+                            title: 'Escala Mensal IEASB',
+                            text: 'Segue a escala mensal da nossa igreja.',
+                            files: [file]
+                          });
+                        } else {
+                          alert('Seu dispositivo não permite compartilhar este tipo de arquivo diretamente.');
+                        }
+                      } catch (error) {
+                        console.log('Compartilhamento cancelado ou falhou', error);
+                      }
+                    } else {
+                      alert('Seu navegador não suporta compartilhamento direto.');
+                    }
+                  }}
+                  className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all cursor-pointer mb-3 flex items-center justify-center gap-2"
+                >
+                  <Share2 className="w-5 h-5" /> Compartilhar Documento
+                </button>
+              )}
+
               <button 
                 type="button"
                 onClick={() => setShowSuccessModal(false)}
