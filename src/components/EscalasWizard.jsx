@@ -403,9 +403,9 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     const leftX = 100;
     let leftY = y;
     doc.text('Pastor José Valter da Silva', leftX, leftY, { align: 'right' }); leftY += 5;
-    doc.text('Secretários: Primeiro(a) secretária Vanessa', leftX, leftY, { align: 'right' }); leftY += 5;
-    doc.text('Soares de Araújo; Segundo secretário(a)', leftX, leftY, { align: 'right' }); leftY += 5;
-    doc.text('José Yago Silva Góes.', leftX, leftY, { align: 'right' });
+    doc.text('Secretários: Primeiro(a) secretário(a)', leftX, leftY, { align: 'right' }); leftY += 5;
+    doc.text('Vanessa Soares de Araújo; segundo(a)', leftX, leftY, { align: 'right' }); leftY += 5;
+    doc.text('secretário(a) José Yago Silva Góes.', leftX, leftY, { align: 'right' });
     
     // Lado direito (Alinhado à esquerda)
     const rightX = 110;
