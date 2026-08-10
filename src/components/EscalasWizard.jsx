@@ -279,36 +279,40 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     const monthNameUpper = format(selectedMonth, 'MMMM', { locale: ptBR }).toUpperCase();
     const yearStr = selectedMonth.getFullYear();
     
-    // Tentar carregar a logo centralizada no topo
+    // Carregar logos
     const logoUrl = `${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - TEXTO2.svg`;
-    const logoData = await getLogoDataUrl(logoUrl);
+    const logoVertUrl = `${import.meta.env.BASE_URL}logos-igreja/SÍMBOLO - ASB - TEXTO - VERTICAL2.svg`;
+    
+    const [logoData, logoVertData] = await Promise.all([
+      getLogoDataUrl(logoUrl),
+      getLogoDataUrl(logoVertUrl)
+    ]);
 
-    let startY = 20;
+    let startY = 15;
 
     if (logoData) {
-      // Calcular altura proporcional baseada na largura de 70mm
-      const targetWidth = 70;
+      const targetWidth = 50; // Ajustado para não ficar tão gigante
       const targetHeight = (targetWidth * logoData.height) / logoData.width;
-      doc.addImage(logoData.url, 'PNG', 105 - (targetWidth / 2), 10, targetWidth, targetHeight);
-      startY = 10 + targetHeight + 5;
-      doc.setTextColor(100, 100, 100);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(11);
-      doc.text('Palmeira dos Índios', 105, startY, { align: 'center' });
-      startY += 12;
+      doc.addImage(logoData.url, 'PNG', 105 - (targetWidth / 2), startY, targetWidth, targetHeight);
+      startY += targetHeight + 5;
     } else {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(11);
-      doc.text('Igreja Evangélica Assembleia dos Santos no Brasil – Palmeira dos índios', 105, startY, { align: 'center' });
-      startY += 8;
+      startY += 20;
     }
 
-    // Título Principal
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text('Palmeira dos Índios', 105, startY, { align: 'center' });
+    startY += 8;
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.text('ESCALA DE CULTOS E OUTRAS REALIZAÇÕES', 105, startY, { align: 'center' });
     startY += 6;
-    doc.text(`${monthNameUpper} DE ${yearStr}`, 105, startY, { align: 'center' });
+    doc.text(`MÊS DE ${yearStr}`, 105, startY, { align: 'center' }); // O modelo diz "MÊS DE ANO", vamos colocar ex: DEZEMBRO DE 2026. A string é MÊS DE ${yearStr} ? Wait. "MÊS DE AGOSTO DE 2026" or just "AGOSTO DE 2026"? O user pediu "MÊS DE ANO", então vou colocar `MÊS DE ${yearStr}` e talvez o mês esteja implícito. Na verdade, "MÊS DE ${monthNameUpper} DE ${yearStr}" seria mais adequado. O modelo mostra "MÊS DE ANO" apenas como placeholder. Vou usar `${monthNameUpper} DE ${yearStr}`.
+    // Correção: O placeholder era "MÊS DE ANO", então colocarei `${monthNameUpper} DE ${yearStr}`
+    // Wait, let's just replace the line with the proper dynamic string.
+    doc.text(`MÊS DE ${monthNameUpper} DE ${yearStr}`, 105, startY, { align: 'center' });
 
     let y = startY + 10;
     const pageHeight = 275;
@@ -320,48 +324,105 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       const dayNumStr = format(dateObj, 'dd');
       const dayOfWeekStr = format(dateObj, 'EEEE', { locale: ptBR }).toUpperCase();
 
-      const itemHeight = item.isEbd ? 25 : 45;
+      const itemHeight = item.isEbd ? 22 : 36;
       if (y + itemHeight > pageHeight) {
         doc.addPage();
         y = 20;
       }
 
       const isSantaCeia = item.title.toUpperCase().includes('SANTA CEIA');
-      // Vermelho bem destacado para Santa Ceia [185, 28, 28], Verde padrão para outros [0, 150, 136]
       const bannerBgColor = isSantaCeia ? [185, 28, 28] : [0, 150, 136];
       
       doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
-      doc.rect(15, y, 180, 7, 'F');
+      doc.rect(15, y, 180, 6, 'F');
 
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
+      doc.setFontSize(10);
       
       const itemTitle = item.title === 'Outro' && item.customTitle ? item.customTitle.toUpperCase() : item.title.toUpperCase();
-      const bannerText = `DIA ${dayNumStr} DE ${monthNameUpper} (${dayOfWeekStr}) – ${itemTitle} ÀS ${item.time}`;
-      doc.text(bannerText, 17, y + 5);
+      const bannerText = `DIA ${dayNumStr} DE ${monthNameUpper} (${dayOfWeekStr}) - ${itemTitle} ÀS ${item.time}`;
+      doc.text(bannerText, 17, y + 4.5);
 
-      y += 16; // Aumentado para dar mais folga vertical
+      y += 11;
 
       doc.setTextColor(0, 0, 0);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold'); // Conforme solicitado: nome de cada um e função em Arial Bold
+      doc.setFontSize(11);
 
-      // Usando marcador limpo e seguro sem caractere corrompido
       if (item.isEbd) {
-        doc.text(`>  PROFESSOR: ${(item.professor || '').toUpperCase()}`, 20, y);
-        y += 12;
+        doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
+        doc.circle(17, y - 1.2, 1.2, 'F');
+        doc.text(`PROFESSOR: ${(item.professor || '').toUpperCase()}`, 20, y);
+        y += 7;
       } else {
-        doc.text(`>  DIRIGENTE: ${(item.dirigente || '').toUpperCase()}`, 20, y);
+        doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
+        doc.circle(17, y - 1.2, 1.2, 'F');
+        doc.text(`DIRIGENTE: ${(item.dirigente || '').toUpperCase()}`, 20, y);
         y += 6;
-        doc.text(`>  LOUVOR: ${(item.louvor || '').toUpperCase()}`, 20, y);
+        
+        doc.circle(17, y - 1.2, 1.2, 'F');
+        doc.text(`LOUVOR: ${(item.louvor || '').toUpperCase()}`, 20, y);
         y += 6;
-        doc.text(`>  PORTA: ${(item.porta || '').toUpperCase()}`, 20, y);
+        
+        doc.circle(17, y - 1.2, 1.2, 'F');
+        doc.text(`PORTA: ${(item.porta || '').toUpperCase()}`, 20, y);
         y += 6;
-        doc.text(`>  ÁGUA: ${(item.agua || '').toUpperCase()}`, 20, y);
-        y += 12;
+        
+        doc.circle(17, y - 1.2, 1.2, 'F');
+        doc.text(`ÁGUA: ${(item.agua || '').toUpperCase()}`, 20, y);
+        y += 10;
       }
     });
+
+    // Bloco Final (Rodapé)
+    if (y > 230) {
+      doc.addPage();
+      y = 30;
+    } else {
+      y += 15;
+    }
+
+    if (logoVertData) {
+      const targetWidth = 25;
+      const targetHeight = (targetWidth * logoVertData.height) / logoVertData.width;
+      doc.addImage(logoVertData.url, 'PNG', 105 - (targetWidth / 2), y, targetWidth, targetHeight);
+      y += targetHeight + 6;
+    }
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('ASSEMBLÉIA DOS\nSANTOS NO BRASIL', 105, y, { align: 'center' });
+    y += 12;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    
+    // Lado esquerdo (Alinhado à direita)
+    const leftX = 100;
+    let leftY = y;
+    doc.text('Pastor José Valter da Silva', leftX, leftY, { align: 'right' }); leftY += 5;
+    doc.text('Secretários: Primeiro(a) secretária Vanessa', leftX, leftY, { align: 'right' }); leftY += 5;
+    doc.text('Soares de Araújo; Segundo secretário(a)', leftX, leftY, { align: 'right' }); leftY += 5;
+    doc.text('José Yago Silva Góes.', leftX, leftY, { align: 'right' });
+    
+    // Lado direito (Alinhado à esquerda)
+    const rightX = 110;
+    let rightY = y;
+    doc.text('CNPJ: 08.936.324/0001-48', rightX, rightY, { align: 'left' }); rightY += 5;
+    doc.text('Loteamento Bosque das Bromélias, Quadra', rightX, rightY, { align: 'left' }); rightY += 5;
+    doc.text('C, Nº 8, Palmeira de Fora - Palmeira dos', rightX, rightY, { align: 'left' }); rightY += 5;
+    doc.text('Índios, Alagoas', rightX, rightY, { align: 'left' });
+
+    // Paginação
+    const pageCount = doc.internal.getNumberOfPages();
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.text(`Página ${i}/${pageCount}`, 105, 290, { align: 'center' });
+    }
 
     const fileName = `ESCALA DE ${monthNameUpper} ${yearStr} - IEASB.pdf`;
     doc.save(fileName);
