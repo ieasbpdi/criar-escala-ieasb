@@ -25,6 +25,7 @@ const ALL_CULTO_TYPES = [
 
 export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
   const [step, setStep] = useState(1);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Rolagem para o topo ao trocar de passo
   useEffect(() => {
