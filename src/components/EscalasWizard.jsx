@@ -381,31 +381,56 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
         doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
         doc.circle(17, y - 1.2, 1.2, 'F');
         doc.setTextColor(0, 0, 0);
-        doc.text(`PROFESSOR: ${(item.professor || '').toUpperCase()}`, 20, y);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text('PROFESSOR: ', 20, y);
+        let w = doc.getTextWidth('PROFESSOR: ');
+        doc.setFont('helvetica', 'bold');
+        doc.text((item.professor || '').toUpperCase(), 20 + w, y);
         y += 7;
       } else {
         doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
         doc.circle(17, y - 1.2, 1.2, 'F');
         doc.setTextColor(0, 0, 0);
-        doc.text(`DIRIGENTE: ${(item.dirigente || '').toUpperCase()}`, 20, y);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text('DIRIGENTE: ', 20, y);
+        let w1 = doc.getTextWidth('DIRIGENTE: ');
+        doc.setFont('helvetica', 'bold');
+        doc.text((item.dirigente || '').toUpperCase(), 20 + w1, y);
         y += 6;
         
         doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
         doc.circle(17, y - 1.2, 1.2, 'F');
         doc.setTextColor(0, 0, 0);
-        doc.text(`LOUVOR: ${(item.louvor || '').toUpperCase()}`, 20, y);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text('LOUVOR: ', 20, y);
+        let w2 = doc.getTextWidth('LOUVOR: ');
+        doc.setFont('helvetica', 'bold');
+        doc.text((item.louvor || '').toUpperCase(), 20 + w2, y);
         y += 6;
         
         doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
         doc.circle(17, y - 1.2, 1.2, 'F');
         doc.setTextColor(0, 0, 0);
-        doc.text(`PORTA: ${(item.porta || '').toUpperCase()}`, 20, y);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text('PORTA: ', 20, y);
+        let w3 = doc.getTextWidth('PORTA: ');
+        doc.setFont('helvetica', 'bold');
+        doc.text((item.porta || '').toUpperCase(), 20 + w3, y);
         y += 6;
         
         doc.setFillColor(bannerBgColor[0], bannerBgColor[1], bannerBgColor[2]);
         doc.circle(17, y - 1.2, 1.2, 'F');
         doc.setTextColor(0, 0, 0);
-        doc.text(`ÁGUA: ${(item.agua || '').toUpperCase()}`, 20, y);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text('ÁGUA: ', 20, y);
+        let w4 = doc.getTextWidth('ÁGUA: ');
+        doc.setFont('helvetica', 'bold');
+        doc.text((item.agua || '').toUpperCase(), 20 + w4, y);
         y += 10;
       }
     });
