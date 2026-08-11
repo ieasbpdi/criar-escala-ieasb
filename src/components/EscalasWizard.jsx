@@ -26,16 +26,18 @@ const ALL_CULTO_TYPES = [
 export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
   const [step, setStep] = useState(1);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [draftActionModal, setDraftActionModal] = useState(null); // Agora recebe o rascunho específico
-  const [draftsListModal, setDraftsListModal] = useState(null); // Recebe o month para listar rascunhos
-  const [saveDraftModal, setSaveDraftModal] = useState(false); // Modal para pegar nome do autor
+  const [draftActionModal, setDraftActionModal] = useState(null);
+  const [draftsListModal, setDraftsListModal] = useState(null);
+  const [saveDraftModal, setSaveDraftModal] = useState(false);
   const [draftAuthor, setDraftAuthor] = useState('');
   const [confirmDeleteDraft, setConfirmDeleteDraft] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [cloudDrafts, setCloudDrafts] = useState({}); // { '2026-0': [{...}], ... }
+  const [cloudDrafts, setCloudDrafts] = useState({});
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [generatedPdfBlob, setGeneratedPdfBlob] = useState(null);
   const [generatedPdfName, setGeneratedPdfName] = useState('');
+  const [activeDraft, setActiveDraft] = useState(null); // { id, autor }
+  const [toastMsg, setToastMsg] = useState(null); // { type: 'success'|'error', text: '' }
 
   // Fechar modais com Escape
   useEffect(() => {
@@ -51,6 +53,11 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showSuccessModal, draftActionModal, confirmDeleteDraft, draftsListModal, saveDraftModal]);
+
+  const showToast = (text, type = 'success') => {
+    setToastMsg({ text, type });
+    setTimeout(() => setToastMsg(null), 3500);
+  };
 
   // Rolagem para o topo ao trocar de passo
   useEffect(() => {
@@ -340,56 +347,49 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     });
   };
 
-  const handleSaveTemporary = (silent = false) => {
-    if (!silent) {
-      setSaveDraftModal(true);
-    } else {
-      const saveToSupabaseSilent = async () => {
-        const savedUser = localStorage.getItem('ieasb_user');
-        const userObj = savedUser ? JSON.parse(savedUser) : null;
-        const autorName = userObj && userObj.username ? userObj.username : 'Sistema';
+  const handleSaveTemporary = async (silent = false) => {
+    const savedUser = localStorage.getItem('ieasb_user');
+    const userObj = savedUser ? JSON.parse(savedUser) : null;
+    const autorName = userObj && userObj.username ? userObj.username : 'Sistema';
+    const key = `${selectedMonth.getFullYear()}-${selectedMonth.getMonth()}`;
+    const monthNameStr = format(selectedMonth, 'MMMM yyyy', { locale: ptBR });
+    const nomeDraft = `Escala de ${monthNameStr.charAt(0).toUpperCase() + monthNameStr.slice(1)}`;
 
-        const key = `${selectedMonth.getFullYear()}-${selectedMonth.getMonth()}`;
-        const payload = {
-          mes_ano: key,
-          nome_rascunho: `Salvo Automaticamente (Download PDF)`,
-          autor_rascunho: autorName,
-          dados: cultosData
-        };
-        try {
-          await supabase.from('escalas_salvas').insert([payload]);
-          setRefreshKey(prev => prev + 1);
-        } catch (err) {
-          console.log('Erro ao auto-salvar:', err);
-        }
-      };
-      saveToSupabaseSilent();
+    setIsSavingDraft(true);
+    try {
+      if (activeDraft?.id) {
+        // Atualiza rascunho existente
+        const { error } = await supabase
+          .from('escalas_salvas')
+          .update({ dados: cultosData, autor_rascunho: autorName, nome_rascunho: nomeDraft })
+          .eq('id', activeDraft.id);
+        if (error) throw error;
+      } else {
+        // Insere novo rascunho
+        const { data: inserted, error } = await supabase
+          .from('escalas_salvas')
+          .insert([{ mes_ano: key, nome_rascunho: nomeDraft, autor_rascunho: autorName, dados: cultosData }])
+          .select()
+          .single();
+        if (error) throw error;
+        if (inserted) setActiveDraft({ id: inserted.id, autor: autorName });
+      }
+      setRefreshKey(prev => prev + 1);
+      if (!silent) {
+        showToast('Rascunho salvo! Ele ficará disponível por 7 dias.');
+      }
+    } catch (err) {
+      console.log('Erro ao salvar rascunho:', err);
+      showToast('Ocorreu um erro ao salvar o rascunho.', 'error');
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
   const confirmSaveDraft = async () => {
-    if (!draftAuthor.trim()) return alert("Por favor, informe seu nome.");
-    setIsSavingDraft(true);
-    const key = `${selectedMonth.getFullYear()}-${selectedMonth.getMonth()}`;
-    const payload = {
-      mes_ano: key,
-      nome_rascunho: `Rascunho de ${draftAuthor}`, // Fallback para a coluna nome_rascunho
-      autor_rascunho: draftAuthor,
-      dados: cultosData
-    };
-    try {
-      await supabase.from('escalas_salvas').insert([payload]);
-      setRefreshKey(prev => prev + 1);
-      setSaveDraftModal(false);
-      setDraftAuthor('');
-      alert('Os dados desta escala foram salvos na nuvem e ficarão disponíveis para você e sua equipe.');
-      setStep(2); // Vai para step 2, ou poderia ir para step 1. Como a tela 3 já tem "Voltar", vamos manter no step 3 e apenas fechar modal? O original ia pra setStep(2) pra editar, não faz muito sentido. Vamos apenas exibir a msg de sucesso e continuar no step 3 (já estamos nele, ou no 1). 
-    } catch (err) {
-      console.log('Erro ao salvar:', err);
-      alert('Ocorreu um erro ao salvar o rascunho.');
-    } finally {
-      setIsSavingDraft(false);
-    }
+    await handleSaveTemporary(false);
+    setSaveDraftModal(false);
+    setDraftAuthor('');
   };
 
   const generatePDF = async () => {
@@ -645,15 +645,31 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     }
   };
 
-  const handleContinueSaved = (month, savedData, e) => {
+  const handleContinueSaved = (month, savedData, e, draft) => {
     e.stopPropagation();
     setSelectedMonth(month);
     setCultosData(savedData);
+    if (draft) setActiveDraft({ id: draft.id, autor: draft.autor_rascunho });
     setStep(2);
   };
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      
+      {/* Toast notification */}
+      {toastMsg && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white text-sm font-semibold animate-fadeIn transition-all ${
+          toastMsg.type === 'error' ? 'bg-red-600' : 'bg-slate-900'
+        }`}>
+          {toastMsg.type === 'error'
+            ? <AlertCircle className="w-5 h-5 shrink-0" />
+            : <CheckCircle2 className="w-5 h-5 shrink-0 text-green-400" />}
+          <span>{toastMsg.text}</span>
+          <button onClick={() => setToastMsg(null)} className="ml-2 opacity-70 hover:opacity-100 cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       
       {/* Modal de Gestão de Membros */}
       <MembersModal 
@@ -697,13 +713,13 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                             files: [file]
                           });
                         } else {
-                          alert('Seu dispositivo não permite compartilhar este tipo de arquivo diretamente.');
+                          showToast('Seu dispositivo não permite compartilhar este tipo de arquivo diretamente.', 'error');
                         }
                       } catch (error) {
                         console.log('Compartilhamento cancelado ou falhou', error);
                       }
                     } else {
-                      alert('Seu navegador não suporta compartilhamento direto.');
+                      showToast('Seu navegador não suporta compartilhamento direto.', 'error');
                     }
                   }}
                   className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all cursor-pointer mb-3 flex items-center justify-center gap-2"
@@ -795,7 +811,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
               <button
                 type="button"
                 onClick={(e) => {
-                  handleContinueSaved(draftActionModal.month, draftActionModal.draft.dados, e);
+                  handleContinueSaved(draftActionModal.month, draftActionModal.draft.dados, e, draftActionModal.draft);
                   setDraftActionModal(null);
                 }}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors cursor-pointer"
@@ -855,7 +871,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                     setRefreshKey(prev => prev + 1);
                     setConfirmDeleteDraft(null);
                   } catch (err) {
-                    alert('Erro ao apagar o rascunho na nuvem.');
+                    showToast('Erro ao apagar o rascunho na nuvem.', 'error');
                   }
                 }}
                 className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors cursor-pointer"
@@ -874,44 +890,8 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
         </div>
       )}
 
-      {/* Save Draft Modal */}
-      {saveDraftModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative text-center">
-            <button 
-              type="button"
-              onClick={() => setSaveDraftModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 cursor-pointer rounded-full hover:bg-slate-100"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle2 className="w-8 h-8 text-green-600" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Salvar Rascunho na Nuvem</h3>
-            <p className="text-slate-600 mb-6 text-sm">
-              Informe seu nome para que sua equipe saiba quem criou este rascunho.
-            </p>
-            <input 
-              type="text" 
-              value={draftAuthor} 
-              onChange={e => setDraftAuthor(e.target.value)} 
-              placeholder="Ex: João Silva"
-              className="w-full mb-6 p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow text-center"
-            />
-            <div className="flex flex-col gap-3">
-              <button
-                type="button"
-                disabled={isSavingDraft || !draftAuthor.trim()}
-                onClick={confirmSaveDraft}
-                className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold rounded-xl transition-colors cursor-pointer"
-              >
-                {isSavingDraft ? 'Salvando...' : 'Salvar e Continuar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Save Draft Modal - agora não precisa mais do modal de nome */}
+      {/* Mantido apenas para compatibilidade - handleSaveTemporary agora é direto */}
 
       <div className="mb-10 max-w-md mx-auto">
         <div className="relative flex items-center justify-between">
@@ -1011,7 +991,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                         {format(month, 'MMMM', { locale: ptBR })}
                       </span>
                     {isPast && (
-                      <span className="inline-block mt-1 px-2 py-0.5 bg-slate-200 text-slate-600 font-semibold text-[10px] rounded-md uppercase tracking-wider">
+                      <span className="block mt-1.5 mx-auto w-fit px-2 py-0.5 bg-slate-200 text-slate-600 font-semibold text-[10px] rounded-md uppercase tracking-wider">
                         Passado
                       </span>
                     )}
@@ -1425,10 +1405,11 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
               <button 
                 type="button"
                 onClick={() => handleSaveTemporary(false)}
-                className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition-all cursor-pointer mt-1"
+                disabled={isSavingDraft}
+                className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition-all cursor-pointer mt-1"
               >
                 <Save className="w-5 h-5" />
-                Apenas Salvar Rascunho
+                {isSavingDraft ? 'Salvando...' : activeDraft ? 'Salvar Rascunho' : 'Apenas Salvar Rascunho'}
               </button>
 
               <button 
