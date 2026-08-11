@@ -70,7 +70,14 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
   useEffect(() => {
     async function loadDrafts() {
       try {
-        const { data, error } = await supabase.from('escalas_salvas').select('*');
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const { data, error } = await supabase
+          .from('escalas_salvas')
+          .select('*')
+          .gte('created_at', sevenDaysAgo.toISOString());
+          
         if (!error && data) {
           const grouped = {};
           data.forEach(d => {
