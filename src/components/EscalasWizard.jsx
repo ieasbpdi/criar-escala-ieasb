@@ -327,11 +327,15 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       setSaveDraftModal(true);
     } else {
       const saveToSupabaseSilent = async () => {
+        const savedUser = localStorage.getItem('ieasb_user');
+        const userObj = savedUser ? JSON.parse(savedUser) : null;
+        const autorName = userObj && userObj.nome ? userObj.nome : 'Sistema';
+
         const key = `${selectedMonth.getFullYear()}-${selectedMonth.getMonth()}`;
         const payload = {
           mes_ano: key,
           nome_rascunho: `Salvo Automaticamente (Download PDF)`,
-          autor_rascunho: 'Sistema (Auto-save)',
+          autor_rascunho: autorName,
           dados: cultosData
         };
         try {
