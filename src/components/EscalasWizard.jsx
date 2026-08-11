@@ -1148,6 +1148,44 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                     </div>
                   )}
 
+                  {(() => {
+                    if (!item.enabled) return null;
+                    const allNamesOnDay = [];
+                    Object.values(cultosData).forEach(d => {
+                      if (d.dateStr === item.dateStr && d.enabled) {
+                        if (d.dirigente) allNamesOnDay.push(d.dirigente);
+                        if (d.porta) allNamesOnDay.push(d.porta);
+                        if (d.agua) allNamesOnDay.push(d.agua);
+                        if (d.professor) allNamesOnDay.push(d.professor);
+                      }
+                    });
+
+                    const myNames = [];
+                    if (item.dirigente) myNames.push(item.dirigente);
+                    if (item.porta) myNames.push(item.porta);
+                    if (item.agua) myNames.push(item.agua);
+                    if (item.professor) myNames.push(item.professor);
+
+                    const duplicates = [];
+                    myNames.forEach(n => {
+                      const count = allNamesOnDay.filter(x => x === n).length;
+                      if (count > 1 && !duplicates.includes(n)) duplicates.push(n);
+                    });
+
+                    if (duplicates.length > 0) {
+                      return (
+                        <div className="mb-3 p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-semibold flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                          <div className="flex flex-col">
+                            <span>Atenção: A mesma pessoa está em mais de uma função neste dia!</span>
+                            <span className="font-normal mt-0.5 opacity-90">Verifique: {duplicates.join(', ')}</span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-3">
                       <span className={`w-9 h-9 rounded-xl font-bold text-sm flex items-center justify-center border ${
