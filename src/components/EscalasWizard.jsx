@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, FileDown, CheckCircle2, AlertCircle, Clock, UserCheck, Music, DoorClosed, Droplets, BookOpen, ChevronLeft, ChevronRight, Gift, FileEdit, Trash2, Edit3, X, Share2 } from 'lucide-react';
+import { Calendar as CalendarIcon, FileDown, CheckCircle2, AlertCircle, Clock, UserCheck, Music, DoorClosed, Droplets, BookOpen, ChevronLeft, ChevronRight, Gift, FileEdit, Trash2, Edit3, X, Share2, ArrowLeft } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -718,6 +718,17 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative text-center">
             <button 
               type="button"
+              onClick={() => {
+                const monthKey = `${draftActionModal.month.getFullYear()}-${draftActionModal.month.getMonth()}`;
+                setDraftsListModal({ month: draftActionModal.month, drafts: cloudDrafts[monthKey] });
+                setDraftActionModal(null);
+              }}
+              className="absolute top-4 left-4 text-slate-400 hover:text-slate-600 p-2 cursor-pointer rounded-full hover:bg-slate-100"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <button 
+              type="button"
               onClick={() => setDraftActionModal(null)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 cursor-pointer rounded-full hover:bg-slate-100"
             >
@@ -746,7 +757,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                 onClick={() => {
                   const d = draftActionModal.draft;
                   setDraftActionModal(null);
-                  setConfirmDeleteDraft({ month: draftActionModal.month, draftId: d.id, autor: d.autor_rascunho });
+                  setConfirmDeleteDraft({ month: draftActionModal.month, draftId: d.id, autor: d.autor_rascunho, draft: d });
                 }}
                 className="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl transition-colors cursor-pointer"
               >
@@ -761,6 +772,16 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       {confirmDeleteDraft && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative text-center">
+            <button 
+              type="button"
+              onClick={() => {
+                setDraftActionModal({ month: confirmDeleteDraft.month, draft: confirmDeleteDraft.draft });
+                setConfirmDeleteDraft(null);
+              }}
+              className="absolute top-4 left-4 text-slate-400 hover:text-slate-600 p-2 cursor-pointer rounded-full hover:bg-slate-100"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
             <button 
               type="button"
               onClick={() => setConfirmDeleteDraft(null)}
