@@ -329,7 +329,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       const saveToSupabaseSilent = async () => {
         const savedUser = localStorage.getItem('ieasb_user');
         const userObj = savedUser ? JSON.parse(savedUser) : null;
-        const autorName = userObj && userObj.nome ? userObj.nome : 'Sistema';
+        const autorName = userObj && userObj.username ? userObj.username : 'Sistema';
 
         const key = `${selectedMonth.getFullYear()}-${selectedMonth.getMonth()}`;
         const payload = {
@@ -419,7 +419,17 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     let y = startY + 10;
     const pageHeight = 275;
 
-    Object.entries(cultosData).forEach(([key, item]) => {
+    const sortedCultos = Object.entries(cultosData).sort((a, b) => {
+      const dateA = new Date(a[1].dateStr + 'T12:00:00');
+      const dateB = new Date(b[1].dateStr + 'T12:00:00');
+      if (dateA.getTime() === dateB.getTime()) {
+        const getOrder = (k) => k.includes('_ebd') ? 1 : k.includes('_tarde') ? 2 : 3;
+        return getOrder(a[0]) - getOrder(b[0]);
+      }
+      return dateA - dateB;
+    });
+
+    sortedCultos.forEach(([key, item]) => {
       if (!item.enabled) return;
 
       const dateObj = new Date(item.dateStr + 'T12:00:00');
@@ -1056,7 +1066,17 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
           </div>
 
           <div className="space-y-4">
-            {Object.entries(cultosData).map(([key, item]) => {
+            {Object.entries(cultosData)
+              .sort((a, b) => {
+                const dateA = new Date(a[1].dateStr + 'T12:00:00');
+                const dateB = new Date(b[1].dateStr + 'T12:00:00');
+                if (dateA.getTime() === dateB.getTime()) {
+                  const getOrder = (k) => k.includes('_ebd') ? 1 : k.includes('_tarde') ? 2 : 3;
+                  return getOrder(a[0]) - getOrder(b[0]);
+                }
+                return dateA - dateB;
+              })
+              .map(([key, item]) => {
               const dateObj = new Date(item.dateStr + 'T12:00:00');
               const dayNum = format(dateObj, 'dd');
               const dayName = format(dateObj, 'EEEE', { locale: ptBR });
