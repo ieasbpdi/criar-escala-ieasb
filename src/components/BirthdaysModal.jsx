@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Gift, Trash2, Search, Calendar as CalendarIcon } from 'lucide-react';
+import { X, Gift, Trash2, Search, Calendar as CalendarIcon, FileDown } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { CustomSelect } from './CustomSelect';
+import jsPDF from 'jspdf';
 
 export function BirthdaysModal({ isOpen, onClose, currentUser }) {
   const [birthdays, setBirthdays] = useState([]);
@@ -97,6 +98,94 @@ export function BirthdaysModal({ isOpen, onClose, currentUser }) {
     }
   };
 
+  const getLogoDataUrl = (src) => new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || 500;
+      canvas.height = img.naturalHeight || 150;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      resolve({ url: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height });
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+
+  const generateBirthdaysPDF = async () => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = 210;
+    const pageH = 297;
+    const margin = 14;
+
+    const logoUrl = `${import.meta.env.BASE_URL}logos-igreja/S\u00cdMBOLO - ASB - TEXTO2.svg`;
+    const logoData = await getLogoDataUrl(logoUrl);
+
+    // Header
+    if (logoData) {
+      const ratio = logoData.width / logoData.height;
+      const imgH = 14;
+      const imgW = imgH * ratio;
+      doc.addImage(logoData.url, 'PNG', margin, 10, imgW, imgH);
+    }
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('LISTA DE ANIVERSARIANTES', pageW / 2, 17, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Igreja Evangélica Assembleia de Santidade Batista - IEASB', pageW / 2, 22, { align: 'center' });
+
+    // Line
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.5);
+    doc.line(margin, 27, pageW - margin, 27);
+
+    let y = 34;
+    let currentMonth = null;
+    const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+    birthdays.forEach((b) => {
+      if (y > pageH - 20) {
+        doc.addPage();
+        y = 14;
+      }
+      if (b.mes !== currentMonth) {
+        currentMonth = b.mes;
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(37, 99, 235);
+        doc.text(monthNames[b.mes - 1].toUpperCase(), margin, y);
+        y += 5;
+        doc.setDrawColor(219, 234, 254);
+        doc.line(margin, y, pageW - margin, y);
+        y += 4;
+      }
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(30, 41, 59);
+      const dayStr = `Dia ${String(b.dia).padStart(2, '0')}`;
+      doc.text(dayStr, margin, y);
+      doc.text(b.membro_nome, margin + 20, y);
+      y += 6;
+    });
+
+    // Footer
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, pageH - 12, pageW - margin, pageH - 12);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      doc.text(`Página ${i} de ${totalPages}`, pageW / 2, pageH - 7, { align: 'center' });
+    }
+
+    doc.save('aniversariantes-ieasb.pdf');
+  };
+
   if (!isOpen) return null;
 
   const filteredBirthdays = birthdays.filter(b => 
@@ -181,9 +270,22 @@ export function BirthdaysModal({ isOpen, onClose, currentUser }) {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-700">Aniversariantes Registrados</h3>
-              <span className="text-xs font-semibold text-fuchsia-600 bg-fuchsia-50 px-2 py-1 rounded-lg">
-                {birthdays.length} cadastrados
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-fuchsia-600 bg-fuchsia-50 px-2 py-1 rounded-lg">
+                  {birthdays.length} cadastrados
+                </span>
+                {birthdays.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={generateBirthdaysPDF}
+                    title="Baixar lista em PDF"
+                    className="flex items-center gap-1 text-xs font-bold text-white bg-fuchsia-600 hover:bg-fuchsia-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                    PDF
+                  </button>
+                )}
+              </div>
             </div>
 
             {birthdays.length > 0 && (

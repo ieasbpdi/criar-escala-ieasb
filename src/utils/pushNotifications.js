@@ -1,5 +1,33 @@
 import { supabase } from './supabase';
 
+export async function checkBirthdayNotifications() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+
+  try {
+    const { data, error } = await supabase.from('aniversarios').select('membro_nome, dia, mes');
+    if (error || !data) return;
+
+    const today = new Date();
+    const targetDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 3);
+
+    const upcoming = data.filter(b => {
+      const bDate = new Date(today.getFullYear(), b.mes - 1, b.dia);
+      return bDate.getDate() === targetDate.getDate() && bDate.getMonth() === targetDate.getMonth();
+    });
+
+    upcoming.forEach(b => {
+      const label = `${String(b.dia).padStart(2, '0')}/${String(b.mes).padStart(2, '0')}`;
+      new Notification('🎂 Aniversário em 3 dias!', {
+        body: `${b.membro_nome} faz aniversário dia ${label}.`,
+        icon: '/logos-igreja/SÍMBOLO - ASB - TEXTO2.svg'
+      });
+    });
+  } catch (err) {
+    console.log('Erro ao verificar aniversários:', err);
+  }
+}
+
 // Chave pública VAPID (Você deve gerar um par de chaves usando a biblioteca web-push e colocar a pública aqui)
 // Exemplo genérico abaixo (substitua pela sua chave pública real gerada pelo web-push)
 const PUBLIC_VAPID_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyehpRXq_XU2p0Y846bJ4y2iF9JIDb4D8YpM_v1g2yQ'; 

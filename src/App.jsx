@@ -5,7 +5,7 @@ import { EscalasWizard } from './components/EscalasWizard';
 import { LoginPage } from './components/LoginPage';
 import { UserManagementModal } from './components/UserManagementModal';
 import { BirthdaysModal } from './components/BirthdaysModal';
-import { initPushNotifications } from './utils/pushNotifications';
+import { initPushNotifications, checkBirthdayNotifications } from './utils/pushNotifications';
 
 function App() {
   const [currentUser, setCurrentUser] = useState(() => {
@@ -22,6 +22,8 @@ function App() {
     localStorage.setItem('ieasb_user', JSON.stringify(userObj));
     // Pede permissão para push notifications apenas logo após o clique de fazer login (User Gesture)
     initPushNotifications();
+    // Verifica aniversários com 3 dias de antecedência
+    setTimeout(() => checkBirthdayNotifications(), 2000);
   };
 
   const handleLogout = () => {

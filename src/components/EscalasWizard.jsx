@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, FileDown, CheckCircle2, AlertCircle, Clock, UserCheck, Music, DoorClosed, Droplets, BookOpen, ChevronLeft, ChevronRight, Gift, FileEdit, Trash2, Edit3, X, Share2, ArrowLeft } from 'lucide-react';
+import { Calendar as CalendarIcon, FileDown, CheckCircle2, AlertCircle, Clock, UserCheck, Music, DoorClosed, Droplets, BookOpen, ChevronLeft, ChevronRight, Gift, FileEdit, Trash2, Edit3, X, Share2, ArrowLeft, Save } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -208,9 +208,14 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
       const holidayInfo = isNewYearEve ? 'CULTO DE VIRADA' : (matchedHoliday ? matchedHoliday.name : null);
       const eveInfo = isEveOfHoliday ? `Véspera de ${isEveOfHoliday.name}` : null;
       
-      const birthdaysOnDay = allBirthdays.filter(b => b.dia === day.getDate() && b.mes === day.getMonth() + 1);
-      const birthdayInfo = birthdaysOnDay.length > 0 
-        ? `Aniversário de: ${birthdaysOnDay.map(b => b.membro_nome).join(', ')}`
+      const dayDate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12, 0, 0);
+      const birthdaysNearDay = allBirthdays.filter(b => {
+        const bDate = new Date(day.getFullYear(), b.mes - 1, b.dia, 12, 0, 0);
+        const diffDays = Math.round(Math.abs(bDate - dayDate) / (1000 * 60 * 60 * 24));
+        return diffDays <= 1;
+      });
+      const birthdayInfo = birthdaysNearDay.length > 0 
+        ? `Aniversários próximos: ${birthdaysNearDay.map(b => `${b.membro_nome} (${String(b.dia).padStart(2, '0')}/${String(b.mes).padStart(2, '0')})`).join(', ')}`
         : null;
 
       const getDefault = (dWeek, time, field, fallback = '') => savedDefaults[`${dWeek}_${time}_${field}`] || fallback;
@@ -1254,7 +1259,12 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                               <BookOpen className="w-4 h-4 text-blue-600" /> Professor da EBD
                             </label>
                             <label className="flex items-center gap-1 cursor-pointer">
-                              <input type="checkbox" className="w-3 h-3 text-blue-600" onChange={(e) => handleSetDefault(getDay(dateObj), 'ebd', 'professor', item.professor, e.target.checked)} />
+                              <input 
+                                type="checkbox" 
+                                className="w-3 h-3 text-blue-600" 
+                                checked={!!item.professor && globalDefaults[`${getDay(dateObj)}_ebd_professor`] === item.professor}
+                                onChange={(e) => handleSetDefault(getDay(dateObj), 'ebd', 'professor', item.professor, e.target.checked)} 
+                              />
                               <span className="text-[10px] text-slate-500 font-semibold">Deixar padrão</span>
                             </label>
                           </div>
@@ -1275,7 +1285,12 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                                 <UserCheck className="w-3.5 h-3.5 text-blue-600" /> Dirigente
                               </label>
                               <label className="flex items-center gap-1 cursor-pointer">
-                                <input type="checkbox" className="w-3 h-3 text-blue-600" onChange={(e) => handleSetDefault(getDay(dateObj), getDay(dateObj) === 6 ? 'tarde' : 'noite', 'dirigente', item.dirigente, e.target.checked)} />
+                                <input 
+                                  type="checkbox" 
+                                  className="w-3 h-3 text-blue-600" 
+                                  checked={!!item.dirigente && globalDefaults[`${getDay(dateObj)}_${getDay(dateObj) === 6 ? 'tarde' : 'noite'}_dirigente`] === item.dirigente}
+                                  onChange={(e) => handleSetDefault(getDay(dateObj), getDay(dateObj) === 6 ? 'tarde' : 'noite', 'dirigente', item.dirigente, e.target.checked)} 
+                                />
                                 <span className="text-[10px] text-slate-500 font-semibold">Deixar padrão</span>
                               </label>
                             </div>
@@ -1293,7 +1308,12 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                                 <Music className="w-3.5 h-3.5 text-blue-600" /> Louvor
                               </label>
                               <label className="flex items-center gap-1 cursor-pointer">
-                                <input type="checkbox" className="w-3 h-3 text-blue-600" onChange={(e) => handleSetDefault(getDay(dateObj), getDay(dateObj) === 6 ? 'tarde' : 'noite', 'louvor', item.louvor, e.target.checked)} />
+                                <input 
+                                  type="checkbox" 
+                                  className="w-3 h-3 text-blue-600" 
+                                  checked={!!item.louvor && globalDefaults[`${getDay(dateObj)}_${getDay(dateObj) === 6 ? 'tarde' : 'noite'}_louvor`] === item.louvor}
+                                  onChange={(e) => handleSetDefault(getDay(dateObj), getDay(dateObj) === 6 ? 'tarde' : 'noite', 'louvor', item.louvor, e.target.checked)} 
+                                />
                                 <span className="text-[10px] text-slate-500 font-semibold">Deixar padrão</span>
                               </label>
                             </div>
@@ -1311,7 +1331,12 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                                 <DoorClosed className="w-3.5 h-3.5 text-blue-600" /> Porta
                               </label>
                               <label className="flex items-center gap-1 cursor-pointer">
-                                <input type="checkbox" className="w-3 h-3 text-blue-600" onChange={(e) => handleSetDefault(getDay(dateObj), getDay(dateObj) === 6 ? 'tarde' : 'noite', 'porta', item.porta, e.target.checked)} />
+                                <input 
+                                  type="checkbox" 
+                                  className="w-3 h-3 text-blue-600" 
+                                  checked={!!item.porta && globalDefaults[`${getDay(dateObj)}_${getDay(dateObj) === 6 ? 'tarde' : 'noite'}_porta`] === item.porta}
+                                  onChange={(e) => handleSetDefault(getDay(dateObj), getDay(dateObj) === 6 ? 'tarde' : 'noite', 'porta', item.porta, e.target.checked)} 
+                                />
                                 <span className="text-[10px] text-slate-500 font-semibold">Deixar padrão</span>
                               </label>
                             </div>
@@ -1329,7 +1354,12 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
                                 <Droplets className="w-3.5 h-3.5 text-blue-600" /> Água
                               </label>
                               <label className="flex items-center gap-1 cursor-pointer">
-                                <input type="checkbox" className="w-3 h-3 text-blue-600" onChange={(e) => handleSetDefault(getDay(dateObj), getDay(dateObj) === 6 ? 'tarde' : 'noite', 'agua', item.agua, e.target.checked)} />
+                                <input 
+                                  type="checkbox" 
+                                  className="w-3 h-3 text-blue-600" 
+                                  checked={!!item.agua && globalDefaults[`${getDay(dateObj)}_${getDay(dateObj) === 6 ? 'tarde' : 'noite'}_agua`] === item.agua}
+                                  onChange={(e) => handleSetDefault(getDay(dateObj), getDay(dateObj) === 6 ? 'tarde' : 'noite', 'agua', item.agua, e.target.checked)} 
+                                />
                                 <span className="text-[10px] text-slate-500 font-semibold">Deixar padrão</span>
                               </label>
                             </div>
@@ -1390,6 +1420,15 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
               >
                 <FileDown className="w-5 h-5" />
                 Baixar PDF Formatado
+              </button>
+              
+              <button 
+                type="button"
+                onClick={() => handleSaveTemporary(false)}
+                className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition-all cursor-pointer mt-1"
+              >
+                <Save className="w-5 h-5" />
+                Apenas Salvar Rascunho
               </button>
 
               <button 
