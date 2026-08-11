@@ -59,6 +59,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
   const [selectedYear, setSelectedYear] = useState(currentYearNum);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [cultosData, setCultosData] = useState({});
+  const [globalDefaults, setGlobalDefaults] = useState({});
   const [members, setMembers] = useState([]);
   const [upcomingBirthdays, setUpcomingBirthdays] = useState([]);
   const [allBirthdays, setAllBirthdays] = useState([]);
@@ -66,31 +67,43 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
   // Meses do ano selecionado
   const yearMonths = Array.from({ length: 12 }, (_, i) => new Date(selectedYear, i, 1));
 
-  // Carregar rascunhos da Nuvem
+  // Carregar rascunhos e padrões da Nuvem
   useEffect(() => {
-    async function loadDrafts() {
+    async function loadData() {
       try {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-        const { data, error } = await supabase
+        const { data: draftsData, error: draftsError } = await supabase
           .from('escalas_salvas')
           .select('*')
           .gte('created_at', sevenDaysAgo.toISOString());
           
-        if (!error && data) {
+        if (!draftsError && draftsData) {
           const grouped = {};
-          data.forEach(d => {
+          draftsData.forEach(d => {
             if (!grouped[d.mes_ano]) grouped[d.mes_ano] = [];
             grouped[d.mes_ano].push(d);
           });
           setCloudDrafts(grouped);
         }
+
+        const { data: defData, error: defError } = await supabase
+          .from('padroes_escala')
+          .select('chave, valor');
+          
+        if (!defError && defData) {
+          const defMap = {};
+          defData.forEach(d => {
+            defMap[d.chave] = d.valor;
+          });
+          setGlobalDefaults(defMap);
+        }
       } catch (err) {
-        console.log('Erro ao carregar rascunhos:', err);
+        console.log('Erro ao carregar dados:', err);
       }
     }
-    loadDrafts();
+    loadData();
   }, [refreshKey]);
 
   // Carregar membros do Supabase
@@ -174,7 +187,7 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
     const holidays = getBrazilianHolidays(month.getFullYear());
     const initialData = {};
 
-    const savedDefaults = JSON.parse(localStorage.getItem('escalaDefaults') || '{}');
+    const savedDefaults = globalDefaults;
 
     days.forEach(day => {
       const dayOfWeek = getDay(day);
@@ -582,15 +595,33 @@ export function EscalasWizard({ isMembersModalOpen, setIsMembersModalOpen }) {
 
   const sortedMemberList = sortMembers(members);
 
-  const handleSetDefault = (dayOfWeek, timeKey, field, value, isChecked) => {
-    const defaults = JSON.parse(localStorage.getItem('escalaDefaults') || '{}');
+  const handleSetDefault = async (dayOfWeek, timeKey, field, value, isChecked) => {
     const key = `${dayOfWeek}_${timeKey}_${field}`;
-    if (isChecked) {
-      defaults[key] = value;
-    } else {
-      delete defaults[key];
+    
+    // Atualiza estado local imediatamente para feedback na tela
+    setGlobalDefaults(prev => {
+      const next = { ...prev };
+      if (isChecked) next[key] = value;
+      else delete next[key];
+      return next;
+    });
+
+    try {
+      if (isChecked) {
+        const { error } = await supabase
+          .from('padroes_escala')
+          .upsert([{ chave: key, valor: value }], { onConflict: 'chave' });
+        if (error) console.log('Erro ao salvar padrão:', error);
+      } else {
+        const { error } = await supabase
+          .from('padroes_escala')
+          .delete()
+          .eq('chave', key);
+        if (error) console.log('Erro ao remover padrão:', error);
+      }
+    } catch (err) {
+      console.log('Erro na requisição de padrão:', err);
     }
-    localStorage.setItem('escalaDefaults', JSON.stringify(defaults));
   };
 
   const getTemporaryData = (year, monthIndex) => {
