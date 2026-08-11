@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, User, KeyRound, AlertCircle, LogIn, UserPlus } from 'lucide-react';
+import { Lock, User, KeyRound, AlertCircle, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 
 export function LoginPage({ onLoginSuccess }) {
@@ -8,6 +8,7 @@ export function LoginPage({ onLoginSuccess }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [isFirstSetup, setIsFirstSetup] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Verificar se já existe algum usuário no banco
   useEffect(() => {
@@ -147,13 +148,20 @@ export function LoginPage({ onLoginSuccess }) {
             <label className="text-xs font-bold text-slate-700">Sua Senha</label>
             <div className="relative">
               <input 
-                type="password" 
+                type={showPassword ? "text" : "password"} 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Senha"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               />
               <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <button 
+                type="button" 
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
